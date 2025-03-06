@@ -6,3 +6,5 @@ release/
 model_assets/*
 !model_assets/.gitkeep
 .env
+character_prompts/Edina.txt
+configuration/appconfig.py

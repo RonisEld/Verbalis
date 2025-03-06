@@ -8,11 +8,12 @@
 - Style-BERT-VITS2による高品質な音声合成
 - 複数の音声モデルと話者の切り替え
 - コマンドラインインターフェース
+- 複数のキャラクター設定による会話スタイルの切り替え
+- 直接組み込み式のチャットボット実装（APIサーバー不要）
 
 ## 前提条件
 
 - Python 3.8以上
-- Style-BERT-VITS2 APIサーバー
 - Google Gemini API Key
 
 ## インストール
@@ -47,15 +48,13 @@ CUDAは後方互換性があるため、GPUが対応しているCUDAバージョ
 4. `.env.example`ファイルを`.env`にコピーし、必要な設定を行います：
 
 ```bash
-cp .env.example .env
+cp configuration/.env.example configuration/.env
 ```
 
 5. `.env`ファイルを編集して、Google Gemini APIキーを設定します：
 
-```
+```bash
 GEMINI_API_KEY=your_api_key_here
-DEFAULT_SPEAKER_ID=0
-DEFAULT_MODEL_ID=0
 ```
 
 ## モデルの設定
@@ -80,29 +79,64 @@ DEFAULT_MODEL_ID=0
    │   └── style_vectors.npy
    ```
 
-2. 必要に応じて `config.py` ファイルの設定を変更します
+2. 必要に応じて `configuration/appconfig.py` ファイルの設定を変更します
    - `USE_GPU` を環境に合わせて設定してください
 
 ## 使い方
 
+### 直接組み込み式チャットボット（推奨）
+
+直接組み込み式のチャットボットは、APIサーバーを経由せずに動作するため、より高速な応答が可能です。
+
+```bash
+python chatbot.py
+```
+
+または、特定のキャラクター設定を指定して起動することもできます：
+
+```bash
+python chatbot.py --character friendly
+```
+
+### APIサーバー経由のチャットボット
+
 1. まず、Style-BERT-VITS2 APIサーバーを起動します：
 
 ```bash
-python sbv2api.py
+python apiserver.py
 ```
 
 または直接uvicornを使用する場合:
 ```bash
-uvicorn sbv2api:app
+uvicorn apiserver:app
 ```
 
 2. 別のターミナルで、Voice Chatアプリケーションを起動します：
 
 ```bash
-python voice_chat.py
+python chatclient.py
 ```
 
-3. プロンプトが表示されたら、チャットを開始できます。
+または、特定のキャラクター設定を指定して起動することもできます：
+
+```bash
+python chatclient.py --character friendly
+```
+
+## キャラクター設定
+
+Verbalisは複数のキャラクター設定をサポートしています。キャラクター設定は `character_prompts` ディレクトリに配置されています。
+
+### 利用可能なキャラクター
+
+- `friendly` - カジュアルで親しみやすい口調のアシスタント
+- `formal` - 敬語を使用する丁寧な口調のアシスタント
+- `default` - シンプルな標準的なアシスタント
+
+### 独自のキャラクター設定の追加
+
+独自のキャラクター設定を追加するには、`character_prompts` ディレクトリに新しいテキストファイルを作成します。
+ファイル名がキャラクター名になります（例: `mycharacter.txt`）。
 
 ## チャットコマンド
 
@@ -111,6 +145,10 @@ python voice_chat.py
 - `/model <id>` - 使用する音声モデルIDを変更
 - `/speaker <id>` - 使用する話者IDを変更
 - `/models` - 利用可能な音声モデル一覧を表示
+- `/character <name>` - キャラクター設定を変更
+- `/characters` - 利用可能なキャラクター一覧を表示
+- `/clear` - チャット履歴をクリア（キャラクター設定は保持）
+- `/volume <0.0-1.0>` - 音声の音量を設定
 - `/help` - ヘルプを表示
 - `/exit` - チャットを終了
 
@@ -167,27 +205,32 @@ python voice_chat.py
 
 ## 設定
 
-`config.py` ファイルを編集して設定を変更できます:
+`configuration/appconfig.py` ファイルを編集して設定を変更できます:
 
-```python
-# モデルディレクトリ設定
-MODEL_DIR = "model_assets"
+- `MODEL_DIR`: モデルファイルが配置されているディレクトリ
+- `CHARACTER_PROMPTS_DIR`: キャラクタープロンプトファイルが配置されているディレクトリ
+- `DEFAULT_CHARACTER`: デフォルトのキャラクター設定
+- `USE_GPU`: GPUを使用するかどうか
+- その他の音声合成パラメータ
 
-# 実行設定
-USE_GPU = True
-VERBOSE = True
+## 実装の違い
 
-# サーバー設定
-HOST = "0.0.0.0"
-PORT = 8000
+### 直接組み込み式チャットボット (chatbot.py)
 
-# BERTモデル設定
-BERT_MODEL_NAME = "ku-nlp/deberta-v2-large-japanese-char-wwm"
-```
+- APIサーバーを経由せず、直接Style-BERT-VITS2モデルを呼び出します
+- より高速な応答が可能
+- 単一のプロセスで動作するため、リソース効率が良い
+- オフライン環境でも使用可能
+
+### APIサーバー経由のチャットボット (apiserver.py + chatclient.py)
+
+- APIサーバーを経由して音声合成を行います
+- 複数のクライアントから同じAPIサーバーにアクセス可能
+- サーバーとクライアントを分離できるため、柔軟な構成が可能
+- 将来的なGUIアプリケーションの開発に適している
 
 ## 注意事項
 
-- Style-BERT-VITS2 APIサーバーが起動していない場合、音声合成機能は使用できません。
 - 長いテキストの場合、音声合成に時間がかかる場合があります。
 - Google Gemini APIの利用には、APIキーと適切な権限が必要です。
 
@@ -196,6 +239,7 @@ BERT_MODEL_NAME = "ku-nlp/deberta-v2-large-japanese-char-wwm"
 - GUIインターフェースの追加
 - 音声認識機能の統合
 - より多くの音声設定オプションの追加
+- 複数のLLMモデルのサポート
 
 ## ライセンス
 
