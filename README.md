@@ -57,6 +57,28 @@ cp configuration/.env.example configuration/.env
 GEMINI_API_KEY=your_api_key_here
 ```
 
+6. `appconfig.py.example`ファイルを`appconfig.py`にコピーし、必要に応じて設定を変更します：
+
+```bash
+cp configuration/appconfig.py.example configuration/appconfig.py
+```
+
+7. `appconfig.py`ファイル内のユーザー名やその他の設定を環境に合わせて編集します：
+
+例：
+```python
+# キャラクターの共通設定
+CHARACTER_COMMON_SETTINGS = """
+ユーザーの名前は「あなたの名前」です。  # ここを変更
+君・さん・ちゃん・呼び捨てなどの形式は、キャラクターの性格やシチュエーションによって判断して下さい。
+絵文字の使用は禁止します。
+難しい漢字を含む言葉については、ひらがなやカタカナを使用します。
+"""
+
+# 実行設定
+USE_GPU = True  # GPUを使用しない場合はFalseに変更
+```
+
 ## モデルの設定
 
 1. モデルファイルを `model_assets/[モデル名]` ディレクトリに配置します
@@ -129,9 +151,9 @@ Verbalisは複数のキャラクター設定をサポートしています。キ
 
 ### 利用可能なキャラクター
 
+- `default` - シンプルな標準的なアシスタント
 - `friendly` - カジュアルで親しみやすい口調のアシスタント
 - `formal` - 敬語を使用する丁寧な口調のアシスタント
-- `default` - シンプルな標準的なアシスタント
 
 ### 独自のキャラクター設定の追加
 
@@ -212,6 +234,20 @@ Verbalisは複数のキャラクター設定をサポートしています。キ
 - `DEFAULT_CHARACTER`: デフォルトのキャラクター設定
 - `USE_GPU`: GPUを使用するかどうか
 - その他の音声合成パラメータ
+
+### 設定ファイルのカスタマイズ
+
+`configuration/appconfig.py.example`は設定ファイルのテンプレートです。このファイルをコピーして`appconfig.py`を作成し、自分の環境に合わせてカスタマイズできます。主な設定項目は以下の通りです：
+
+- `MODEL_DIR`: モデルファイルの配置ディレクトリ
+- `CHARACTER_PROMPTS_DIR`: キャラクタープロンプトファイルの配置ディレクトリ
+- `DEFAULT_CHARACTER`: デフォルトで使用するキャラクター名
+- `CHARACTER_COMMON_SETTINGS`: すべてのキャラクターに共通する設定（ユーザー名など）
+- `USE_GPU`: GPUを使用するかどうか（True/False）
+- `VERBOSE`: 詳細なログを出力するかどうか
+- `MAX_CACHE_SIZE`: 音声キャッシュの最大サイズ
+- `HOST`/`PORT`: APIサーバーのホストとポート
+- 音声合成の各種パラメータ（スタイル、ノイズ、長さなど）
 
 ## 実装の違い
 
