@@ -1,0 +1,43 @@
+# モデルディレクトリ設定
+MODEL_DIR = "model_assets"
+
+# キャラクタープロンプト設定
+CHARACTER_PROMPTS_DIR = "character_prompts"
+DEFAULT_CHARACTER = "default"  # デフォルトのキャラクター設定
+
+# キャラクターの共通設定
+CHARACTER_COMMON_SETTINGS = """
+ユーザーの名前は「〇〇〇」です。
+君・さん・ちゃん・呼び捨てなどの形式は、キャラクターの性格やシチュエーションによって判断して下さい。
+絵文字の使用は禁止します。
+難しい漢字を含む言葉については、ひらがなやカタカナを使用します。
+"""
+
+# 実行設定
+USE_GPU = True
+VERBOSE = True
+
+# パフォーマンス最適化設定
+MAX_CACHE_SIZE = 100  # 最大キャッシュサイズ
+OPTIMIZE_SHORT_SENTENCES = True  # 短い文の処理を最適化
+
+# サーバー設定
+HOST = "0.0.0.0"
+PORT = 8000
+
+# BERTモデル設定
+BERT_MODEL_NAME = "ku-nlp/deberta-v2-large-japanese-char-wwm"
+
+# 音声合成のデフォルト設定
+DEFAULT_STYLE = "Neutral"
+DEFAULT_STYLE_WEIGHT = 1.0
+DEFAULT_SDP_RATIO = 0.2
+DEFAULT_NOISE = 0.6
+DEFAULT_NOISEW = 0.8
+DEFAULT_LENGTH = 1.0
+DEFAULT_LINE_SPLIT = True
+DEFAULT_SPLIT_INTERVAL = 1
+DEFAULT_ASSIST_TEXT_WEIGHT = 1.0
+DEFAULT_VOLUME = 0.3  # 音量のデフォルト値（0.0〜1.0）
+
+
