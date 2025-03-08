@@ -1,6 +1,27 @@
+# Python関連
 venv/
 __pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
 dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# プロジェクト固有
 release/
 .specstory/
 model_assets/*
@@ -8,3 +29,29 @@ model_assets/*
 .env
 character_prompts/Edina.txt
 configuration/appconfig.py
+configuration/.env
+outputs/
+debug/
+
+# エディタ/IDE関連
+.cursor/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Gradio関連
+.gradio/
+
+# OS関連
+.DS_Store
+Thumbs.db
+*.db
+desktop.ini
+
+# 一時ファイル
+*.log
+*.tmp
+*.temp
+temp_*
+*.wav

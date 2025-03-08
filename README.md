@@ -1,22 +1,22 @@
 # Verbalis - Voice Chat Assistant
 
-このプロジェクトは、Google Gemini 2.0 Flash APIを使用したチャットボットと、Style-BERT-VITS2による音声合成を組み合わせたコマンドラインアプリケーションです。テキストでチャットし、AIの応答を音声で聞くことができます。
 
-## 機能
+Verbalisは、[Style-BERT-VITS2](https://github.com/litagin02/Style-Bert-VITS2)による高品質な音声合成を活用した様々な機能を含むUIを目指します。
 
-- Google Gemini 2.0 Flash APIを使用したテキストチャット
-- Style-BERT-VITS2による高品質な音声合成
-- 複数の音声モデルと話者の切り替え
-- コマンドラインインターフェース
-- 複数のキャラクター設定による会話スタイルの切り替え
-- 直接組み込み式のチャットボット実装（APIサーバー不要）
+## ✨ 機能
 
-## 前提条件
+- [Style-BERT-VITS2](https://github.com/litagin02/Style-Bert-VITS2)による高品質な音声合成
+- 用意した音声モデルの声と、自然に会話が可能なチャットボット"Chat"タブ
+- 音声合成のワークフローを扱いやすくするためのエディター"VoiceGen"タブ
+- [SBV2](https://github.com/litagin02/Style-Bert-VITS2)に標準搭載されている"スタイル"機能や各種パラメーターの変更機能
+- ChatBotは具体的なプロフィールやユーザーの呼称など、自由に決めることが可能
+
+## 📋 前提条件
 
 - Python 3.8以上
 - Google Gemini API Key
 
-## インストール
+## 🔧 インストール
 
 1. 依存関係をインストールします
 ```bash
@@ -31,41 +31,34 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126   # CUDA 12.6の場合  
 ```
 
-3. 自分のGPUの対応CUDAバージョンを確認する方法。
+3. 自分のGPUの対応CUDAバージョンを確認する方法：
 ```bash
 nvidia-smi
 ```
-を実行して、右上のCUDAバージョンを確認します。
+右上のCUDAバージョンを確認します。
 ```bash
 nvcc -V
 ```
-を実行して、インストールされているCUDA toolkitのバージョンを確認します。
+インストールされているCUDA toolkitのバージョンを確認します。
 
 CUDAは後方互換性があるため、GPUが対応しているCUDAバージョンとCUDA toolkitのバージョンが一致していない場合は、対応している最新のToolkitをインストールしてください。
 
-その上で12.6より新しい場合は12.6を。12.4より新しい場合は12.4を。11.8より新しい場合は11.8を指定するようにしてください。
-
-4. `.env.example`ファイルを`.env`にコピーし、必要な設定を行います：
-
+4. `.env.example`ファイルを`.env`にコピーします：
 ```bash
 cp configuration/.env.example configuration/.env
 ```
 
-5. `.env`ファイルを編集して、Google Gemini APIキーを設定します：
-
+5. `configuration/.env`ファイルを編集して、Google Gemini APIキーを設定します：
 ```bash
 GEMINI_API_KEY=your_api_key_here
 ```
 
-6. `appconfig.py.example`ファイルを`appconfig.py`にコピーし、必要に応じて設定を変更します：
-
+6. `appconfig.py.example`ファイルを`appconfig.py`にコピーします：
 ```bash
 cp configuration/appconfig.py.example configuration/appconfig.py
 ```
 
 7. `appconfig.py`ファイル内のユーザー名やその他の設定を環境に合わせて編集します：
-
-例：
 ```python
 # キャラクターの共通設定
 CHARACTER_COMMON_SETTINGS = """
@@ -77,18 +70,25 @@ CHARACTER_COMMON_SETTINGS = """
 
 # 実行設定
 USE_GPU = True  # GPUを使用しない場合はFalseに変更
+
+# 音声パラメーター
+# - スタイル: 音声の感情スタイル（Neutral、Happy、Sad、Angry、Surprised）
+# - スタイルの重み: スタイルの適用強度（0.0〜1.0）
+# - SDP比率: SDP（Speaker Disentanglement Pretraining）の比率（0.0〜1.0）
+# - ノイズ: 音声のノイズ量（0.0〜1.0）
+# - ノイズの重み: ノイズの適用強度（0.0〜1.0）
+# - 音声の長さ: 音声の再生速度（0.5〜2.0、1.0が標準）
 ```
 
-## モデルの設定
+## 🎤 モデルの配置
 
-1. モデルファイルを `model_assets/[モデル名]` ディレクトリに配置します
-   - 例: `model_assets/MergedVoice_Rnn_Asm__Mzk(0_0.3_0.5_0)/`
+- モデルファイルを `model_assets/[モデル名]` ディレクトリに配置します
+   - 例: `model_assets/[モデル名]/`
    - モデルファイル: `[モデル名].safetensors`
    - 設定ファイル: `config.json`
    - スタイルファイル: `style_vectors.npy`
 
-   複数のモデルを使用する場合は、それぞれのモデルを別々のディレクトリに配置します。
-   例:
+- 複数のモデルを使用する場合は、それぞれのモデルを別々のディレクトリに配置します：
    ```
    model_assets/
    ├── Model1/
@@ -101,66 +101,66 @@ USE_GPU = True  # GPUを使用しない場合はFalseに変更
    │   └── style_vectors.npy
    ```
 
-2. 必要に応じて `configuration/appconfig.py` ファイルの設定を変更します
-   - `USE_GPU` を環境に合わせて設定してください
+## 🚀 使い方
 
-## 使い方
+VerbalisはGradioを使用したWebインターフェイスを採用しています。
 
-### 直接組み込み式チャットボット（推奨）
-
-直接組み込み式のチャットボットは、APIサーバーを経由せずに動作するため、より高速な応答が可能です。
+### 起動方法
 
 ```bash
-python chatbot.py
+python webui.py
 ```
 
-または、特定のキャラクター設定を指定して起動することもできます：
+起動オプション:
+- `--host`: ホストアドレス（デフォルト: appconfig.pyのHOST）
+- `--port`: ポート番号（デフォルト: appconfig.pyのPORT）
+- `--share`: Gradio共有リンクを生成する
+- `--gpu`: GPUを使用する（appconfig.pyの設定を上書き）
 
-```bash
-python chatbot.py --character friendly
-```
+### 機能
 
-### APIサーバー経由のチャットボット
+- Chat
+   - Gemini APIを活用した、高品質なチャットボット
+   - SBV2によるチャット音声の自動生成と自動再生
+   - キャラクタープロンプトによる、チャットボットのカスタマイズ
+   - 音声ファイルの自動保存(On/Off可) `(outputs/Chat/{日付}/)`
 
-1. まず、Style-BERT-VITS2 APIサーバーを起動します：
+- VoiceGem
+   - SBV2による高速かつ高品質な音声合成
+   - 履歴機能により、ワンクリックで過去の音声を再生
+   - セッションを跨いだ履歴の読み込み
+   - 音声ファイルの自動保存 `(outputs/VoiceGen/{日付}/)`
 
-```bash
-python apiserver.py
-```
+- 共通要素
+   - 保存した音声のメタデータを同名のjsonファイルとして自動生成
+   - UI上でのモデル切り替え
+   - 音声パラメーターのカスタマイズ
 
-または直接uvicornを使用する場合:
-```bash
-uvicorn apiserver:app
-```
+### UI要素
 
-2. 別のターミナルで、Voice Chatアプリケーションを起動します：
+1. **チャットボット**: チャットの履歴を表示します。
+2. **設定パネル**: モデル選択、キャラクター選択、音声パラメーターなどの設定を行います。
+3. **テキストボックス**: メッセージを入力します。
+4. **送信ボタン**: メッセージを送信します。
+5. **チャット履歴をリセット**: チャット履歴をクリアします。
+6. **音声プレイヤー**: 生成された音声を再生します。 
 
-```bash
-python chatclient.py
-```
-
-または、特定のキャラクター設定を指定して起動することもできます：
-
-```bash
-python chatclient.py --character friendly
-```
-
-## キャラクター設定
+## 🎭 キャラクター設定
 
 Verbalisは複数のキャラクター設定をサポートしています。キャラクター設定は `character_prompts` ディレクトリに配置されています。
 
-### 利用可能なキャラクター
+#### 利用可能なキャラクター
 
 - `default` - シンプルな標準的なアシスタント
 - `friendly` - カジュアルで親しみやすい口調のアシスタント
 - `formal` - 敬語を使用する丁寧な口調のアシスタント
 
-### 独自のキャラクター設定の追加
+#### 独自のキャラクター設定の追加
 
 独自のキャラクター設定を追加するには、`character_prompts` ディレクトリに新しいテキストファイルを作成します。
 ファイル名がキャラクター名になります（例: `mycharacter.txt`）。
 
-## チャットコマンド
+### 💬 チャットコマンド
 
 チャット中に以下のコマンドを使用できます：
 
@@ -174,109 +174,14 @@ Verbalisは複数のキャラクター設定をサポートしています。キ
 - `/help` - ヘルプを表示
 - `/exit` - チャットを終了
 
-## API エンドポイント
 
-### GET /models
+### ⚠️ 注意事項
 
-利用可能なモデルの一覧を取得します。
+- 長いテキストの場合、音声合成に時間がかかる場合があります
+- Google Gemini APIの利用には、APIキーと適切な権限が必要です
 
-**レスポンス例:**
-```json
-{
-  "models": [
-    {
-      "id": 0,
-      "name": "Model1"
-    },
-    {
-      "id": 1,
-      "name": "Model2"
-    }
-  ],
-  "default_model_id": 0
-}
-```
+### 📝 ライセンス
+このリポジトリは、Style-Bert-VITS2に準拠し、GNU Affero General Public License v3.0 を採用します。
+詳しくはLICENSEを確認してください。
 
-### GET /voice
 
-テキストから音声を生成します。
-
-**パラメータ:**
-- `text`: 音声に変換するテキスト（必須）
-- `speaker_id`: 話者ID（デフォルト: 0）
-- `style`: スタイル名（デフォルト: "Neutral"）
-- `model_id`: 使用するモデルのID（デフォルト: 0）
-- その他多数のパラメータが利用可能
-
-**レスポンス:**
-- WAV形式の音声データ
-
-### GET /voice/{model_id}
-
-指定したモデルIDを使用してテキストから音声を生成します。
-
-**パラメータ:**
-- `model_id`: 使用するモデルのID（パスパラメータ）
-- `text`: 音声に変換するテキスト（必須）
-- `speaker_id`: 話者ID（デフォルト: 0）
-- `style`: スタイル名（デフォルト: "Neutral"）
-- その他多数のパラメータが利用可能
-
-**レスポンス:**
-- WAV形式の音声データ
-
-## 設定
-
-`configuration/appconfig.py` ファイルを編集して設定を変更できます:
-
-- `MODEL_DIR`: モデルファイルが配置されているディレクトリ
-- `CHARACTER_PROMPTS_DIR`: キャラクタープロンプトファイルが配置されているディレクトリ
-- `DEFAULT_CHARACTER`: デフォルトのキャラクター設定
-- `USE_GPU`: GPUを使用するかどうか
-- その他の音声合成パラメータ
-
-### 設定ファイルのカスタマイズ
-
-`configuration/appconfig.py.example`は設定ファイルのテンプレートです。このファイルをコピーして`appconfig.py`を作成し、自分の環境に合わせてカスタマイズできます。主な設定項目は以下の通りです：
-
-- `MODEL_DIR`: モデルファイルの配置ディレクトリ
-- `CHARACTER_PROMPTS_DIR`: キャラクタープロンプトファイルの配置ディレクトリ
-- `DEFAULT_CHARACTER`: デフォルトで使用するキャラクター名
-- `CHARACTER_COMMON_SETTINGS`: すべてのキャラクターに共通する設定（ユーザー名など）
-- `USE_GPU`: GPUを使用するかどうか（True/False）
-- `VERBOSE`: 詳細なログを出力するかどうか
-- `MAX_CACHE_SIZE`: 音声キャッシュの最大サイズ
-- `HOST`/`PORT`: APIサーバーのホストとポート
-- 音声合成の各種パラメータ（スタイル、ノイズ、長さなど）
-
-## 実装の違い
-
-### 直接組み込み式チャットボット (chatbot.py)
-
-- APIサーバーを経由せず、直接Style-BERT-VITS2モデルを呼び出します
-- より高速な応答が可能
-- 単一のプロセスで動作するため、リソース効率が良い
-- オフライン環境でも使用可能
-
-### APIサーバー経由のチャットボット (apiserver.py + chatclient.py)
-
-- APIサーバーを経由して音声合成を行います
-- 複数のクライアントから同じAPIサーバーにアクセス可能
-- サーバーとクライアントを分離できるため、柔軟な構成が可能
-- 将来的なGUIアプリケーションの開発に適している
-
-## 注意事項
-
-- 長いテキストの場合、音声合成に時間がかかる場合があります。
-- Google Gemini APIの利用には、APIキーと適切な権限が必要です。
-
-## 将来の展望
-
-- GUIインターフェースの追加
-- 音声認識機能の統合
-- より多くの音声設定オプションの追加
-- 複数のLLMモデルのサポート
-
-## ライセンス
-
-このプロジェクトは、MITライセンスの下で公開されています。 
