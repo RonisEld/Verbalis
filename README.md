@@ -59,7 +59,7 @@ cp configuration/appconfig.py.example configuration/appconfig.py
 ```
 
 7. `appconfig.py`ファイル内のユーザー名やその他の設定を環境に合わせて編集します：
-```python
+```c
 # キャラクターの共通設定
 CHARACTER_COMMON_SETTINGS = """
 ユーザーの名前は「あなたの名前」です。  # ここを変更
@@ -104,6 +104,10 @@ DEFAULT_VOLUME: 音量のデフォルト値（0.0〜1.0）
    │   ├── config.json
    │   └── style_vectors.npy
    ```
+
+- モデルを所持していない場合
+   -  [Style-BERT-VITS2](https://github.com/litagin02/Style-Bert-VITS2)で学習を行う。
+   -  サンプルモデルや有料モデルを用意する。
 
 ## 🚀 使い方
 
