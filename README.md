@@ -17,13 +17,22 @@ Verbalisは、[Style-BERT-VITS2](https://github.com/litagin02/Style-Bert-VITS2)�
 - Google Gemini API Key
 
 ## 🔧 インストール
+1. このリポジトリを好きな場所にgit cloneします。
+```bash
+git clone https://github.com/RonisEld/Verbalis.git
+```
 
-1. 依存関係をインストールします
+&emsp;必要であれば仮想環境を用意してください。
+```bash
+python -m venv venv
+```
+
+2. 依存関係をインストールします
 ```bash
 pip install -r requirements.txt
 ```
 
-2. GPUを使用する場合は、環境のCUDAバージョンに合わせてPyTorchを再インストールします ※[わからない場合](#cuda)
+3. GPUを使用する場合は、環境のCUDAバージョンに合わせてPyTorchを再インストールします ※[わからない場合](#cuda)
 ```bash
 pip uninstall torch torchvision torchaudio
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118   # CUDA 11.8の場合  
@@ -81,7 +90,7 @@ nvidia-smi
 ```bash
 nvcc -V
 ```
-GPUが対応しているCUDAバージョンとCUDA toolkitのバージョンが一致していない場合は、対応している最新のToolkitをインストールしてください
+GPUが対応しているCUDAバージョンとCUDA toolkitのバージョンが一致していない場合は、対応している最新のToolkitをインストールしてください <br>
 CUDAは後方互換性があります。自分の環境のCUDAのバージョンより数字が小さく、かつ最新のものを選ぶといいでしょう
 
 ## 🎤 モデルの配置
@@ -156,7 +165,7 @@ Verbalisは複数のキャラクター設定をサポートしています。キ
 
 ### 独自のキャラクター設定の追加
 
-独自のキャラクター設定を追加するには、`character_prompts` ディレクトリに新しいテキストファイルを作成します
+独自のキャラクター設定を追加するには、`character_prompts` ディレクトリに新しいテキストファイルを作成します <br>
 ファイル名がキャラクター名になります（例: `mycharacter.txt`）
 
 ## ⚠️ 注意事項
@@ -165,7 +174,7 @@ Verbalisは複数のキャラクター設定をサポートしています。キ
 - Google Gemini APIの利用には、APIキーと適切な権限が必要です
 
 ## 📝 ライセンス
-このリポジトリは、Style-Bert-VITS2に準拠し、GNU Affero General Public License v3.0 を採用します
+このリポジトリは、Style-Bert-VITS2に準拠し、GNU Affero General Public License v3.0 を採用します <br>
 詳しくはLICENSEを確認してください
 
 
