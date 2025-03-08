@@ -73,7 +73,7 @@ USE_GPU = True  # GPUを使用しない場合はFalseに変更
 
 # 音声パラメーター
 DEFAULT_STYLE: 音声の感情スタイル（Neutral、Happy、Sad、Angry、Surprised）
-DEFAULT_STYLE_WEIGHT : スタイルの適用強度
+DEFAULT_STYLE_WEIGHT: スタイルの適用強度
 DEFAULT_SDP_RATIO: SDP（Speaker Disentanglement Pretraining）の比率
 DEFAULT_NOISE: 音声のノイズ量
 DEFAULT_NOISEW: ノイズの適用強度
