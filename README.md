@@ -72,12 +72,16 @@ CHARACTER_COMMON_SETTINGS = """
 USE_GPU = True  # GPUを使用しない場合はFalseに変更
 
 # 音声パラメーター
-# - スタイル: 音声の感情スタイル（Neutral、Happy、Sad、Angry、Surprised）
-# - スタイルの重み: スタイルの適用強度（0.0〜1.0）
-# - SDP比率: SDP（Speaker Disentanglement Pretraining）の比率（0.0〜1.0）
-# - ノイズ: 音声のノイズ量（0.0〜1.0）
-# - ノイズの重み: ノイズの適用強度（0.0〜1.0）
-# - 音声の長さ: 音声の再生速度（0.5〜2.0、1.0が標準）
+DEFAULT_STYLE: 音声の感情スタイル（Neutral、Happy、Sad、Angry、Surprised）
+DEFAULT_STYLE_WEIGHT : スタイルの適用強度
+DEFAULT_SDP_RATIO: SDP（Speaker Disentanglement Pretraining）の比率
+DEFAULT_NOISE: 音声のノイズ量
+DEFAULT_NOISEW: ノイズの適用強度
+DEFAULT_LENGTH: 音声の速度
+DEFAULT_LINE_SPLIT: テキストを自動で分割するかどうか
+DEFAULT_SPLIT_INTERVAL: 分割点で何秒間隔をあけるか
+DEFAULT_ASSIST_TEXT_WEIGHT: アシストテキストの重み デフォルト推奨
+DEFAULT_VOLUME: 音量のデフォルト値（0.0〜1.0）
 ```
 
 ## 🎤 モデルの配置

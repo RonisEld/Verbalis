@@ -25,7 +25,7 @@ OPTIMIZE_SHORT_SENTENCES = True  # 短い文の処理を最適化
 HOST = "0.0.0.0"
 PORT = 8000
 
-# BERTモデル設定
+# BERTモデル設定 (変更しないように)
 BERT_MODEL_NAME = "ku-nlp/deberta-v2-large-japanese-char-wwm"
 
 # 音声合成のデフォルト設定
