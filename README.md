@@ -1,7 +1,7 @@
 # Verbalis - Voice Chat Assistant
 
 
-Verbalisは、[Style-BERT-VITS2](https://github.com/litagin02/Style-Bert-VITS2)による高品質な音声合成を活用した様々な機能を含むUIを目指します。
+Verbalisは、[Style-BERT-VITS2](https://github.com/litagin02/Style-Bert-VITS2)による高品質な音声合成を活用した様々な機能を含むUIを目指します
 
 ## ✨ 機能
 
@@ -23,7 +23,7 @@ Verbalisは、[Style-BERT-VITS2](https://github.com/litagin02/Style-Bert-VITS2)�
 pip install -r requirements.txt
 ```
 
-2. GPUを使用する場合は、環境のCUDAバージョンに合わせてPyTorchを再インストールします
+2. GPUを使用する場合は、環境のCUDAバージョンに合わせてPyTorchを再インストールします ※[わからない場合](#cuda)
 ```bash
 pip uninstall torch torchvision torchaudio
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118   # CUDA 11.8の場合  
@@ -31,34 +31,22 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126   # CUDA 12.6の場合  
 ```
 
-3. 自分のGPUの対応CUDAバージョンを確認する方法：
-```bash
-nvidia-smi
-```
-右上のCUDAバージョンを確認します。
-```bash
-nvcc -V
-```
-インストールされているCUDA toolkitのバージョンを確認します。
-
-CUDAは後方互換性があるため、GPUが対応しているCUDAバージョンとCUDA toolkitのバージョンが一致していない場合は、対応している最新のToolkitをインストールしてください。
-
-4. `.env.example`ファイルを`.env`にコピーします：
+3. `.env.example`ファイルを`.env`にコピーします：
 ```bash
 cp configuration/.env.example configuration/.env
 ```
 
-5. `configuration/.env`ファイルを編集して、Google Gemini APIキーを設定します：
+4. `configuration/.env`ファイルを編集して、Google Gemini APIキーを設定します：
 ```bash
 GEMINI_API_KEY=your_api_key_here
 ```
 
-6. `appconfig.py.example`ファイルを`appconfig.py`にコピーします：
+5. `appconfig.py.example`ファイルを`appconfig.py`にコピーします：
 ```bash
 cp configuration/appconfig.py.example configuration/appconfig.py
 ```
 
-7. `appconfig.py`ファイル内のユーザー名やその他の設定を環境に合わせて編集します：
+6. `appconfig.py`ファイル内のユーザー名やその他の設定を環境に合わせて編集します：
 ```c
 # キャラクターの共通設定
 CHARACTER_COMMON_SETTINGS = """
@@ -83,6 +71,18 @@ DEFAULT_SPLIT_INTERVAL: 分割点で何秒間隔をあけるか
 DEFAULT_ASSIST_TEXT_WEIGHT: アシストテキストの重み デフォルト推奨
 DEFAULT_VOLUME: 音量のデフォルト値（0.0〜1.0）
 ```
+<a id="cuda"></a>
+### 自分のGPUの対応CUDAバージョンを確認する方法：
+以下のコマンドで、右上のCUDAバージョンを確認します
+```bash
+nvidia-smi
+```
+以下のコマンドで、インストールされているCUDA toolkitのバージョンを確認します
+```bash
+nvcc -V
+```
+GPUが対応しているCUDAバージョンとCUDA toolkitのバージョンが一致していない場合は、対応している最新のToolkitをインストールしてください
+CUDAは後方互換性があります。自分の環境のCUDAのバージョンより数字が小さく、かつ最新のものを選ぶといいでしょう
 
 ## 🎤 モデルの配置
 
@@ -106,12 +106,12 @@ DEFAULT_VOLUME: 音量のデフォルト値（0.0〜1.0）
    ```
 
 - モデルを所持していない場合
-   -  [Style-BERT-VITS2](https://github.com/litagin02/Style-Bert-VITS2)で学習を行う。
-   -  サンプルモデルや有料モデルを用意する。
+   -  [Style-BERT-VITS2](https://github.com/litagin02/Style-Bert-VITS2)で学習を行う
+   -  サンプルモデルや有料モデルを用意する
 
 ## 🚀 使い方
 
-VerbalisはGradioを使用したWebインターフェイスを採用しています。
+VerbalisはGradioを使用したWebインターフェイスを採用しています
 
 ### 起動方法
 
@@ -146,7 +146,7 @@ python webui.py
 
 ## 🎭 キャラクター設定
 
-Verbalisは複数のキャラクター設定をサポートしています。キャラクター設定は `character_prompts` ディレクトリに配置されています。
+Verbalisは複数のキャラクター設定をサポートしています。キャラクター設定は `character_prompts` ディレクトリに配置されています
 
 ### 利用可能なキャラクター
 
@@ -156,8 +156,8 @@ Verbalisは複数のキャラクター設定をサポートしています。キ
 
 ### 独自のキャラクター設定の追加
 
-独自のキャラクター設定を追加するには、`character_prompts` ディレクトリに新しいテキストファイルを作成します。
-ファイル名がキャラクター名になります（例: `mycharacter.txt`）。
+独自のキャラクター設定を追加するには、`character_prompts` ディレクトリに新しいテキストファイルを作成します
+ファイル名がキャラクター名になります（例: `mycharacter.txt`）
 
 ## ⚠️ 注意事項
 
@@ -165,7 +165,7 @@ Verbalisは複数のキャラクター設定をサポートしています。キ
 - Google Gemini APIの利用には、APIキーと適切な権限が必要です
 
 ## 📝 ライセンス
-このリポジトリは、Style-Bert-VITS2に準拠し、GNU Affero General Public License v3.0 を採用します。
-詳しくはLICENSEを確認してください。
+このリポジトリは、Style-Bert-VITS2に準拠し、GNU Affero General Public License v3.0 を採用します
+詳しくはLICENSEを確認してください
 
 
