@@ -1,7 +1,7 @@
 """
-Verbalis Voice Chat Assistant モジュール
+Verbalis モジュール
 
-このパッケージはVerbalis Voice Chat Assistantの主要なモジュールを提供します。
+このパッケージはVerbalisの主要なモジュールを提供します。
 """
 
 from modules.tts import BaseTTS, StyleBertVits2TTS, DirectTTS

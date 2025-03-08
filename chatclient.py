@@ -433,7 +433,7 @@ class VoiceChat(APIVoiceChat):
         """
         チャットループを実行する
         """
-        print("\nVerbalis Voice Chat Assistant (API版) を起動しました。")
+        print("\nVerbalis (API版) を起動しました。")
         print("チャットを終了するには 'exit' と入力してください。")
         print("コマンド一覧を表示するには 'help' と入力してください。")
         print("=" * 50)
@@ -493,7 +493,7 @@ async def main():
     メイン関数
     """
     # コマンドライン引数の解析
-    parser = argparse.ArgumentParser(description="Verbalis Voice Chat Assistant (API版)")
+    parser = argparse.ArgumentParser(description="Verbalis (API版)")
     parser.add_argument("--character", "-c", type=str, default=DEFAULT_CHARACTER,
                         help=f"使用するキャラクター設定の名前（デフォルト: {DEFAULT_CHARACTER}）")
     parser.add_argument("--speaker", "-s", type=int, default=DEFAULT_SPEAKER_ID,

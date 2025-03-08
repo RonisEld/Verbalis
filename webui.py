@@ -1,7 +1,7 @@
 """
-Verbalis Voice Chat Assistant - Web UI
+Verbalis - Web UI
 
-このモジュールはGradioを使用したVerbalis Voice Chat AssistantのWebインターフェースを提供します。
+このモジュールはGradioを使用したVerbalisのWebインターフェースを提供します。
 """
 
 import os
@@ -120,7 +120,7 @@ STYLE_CSS = """
 
 class VerbalisWebUI:
     """
-    Verbalis Voice Chat AssistantのWebインターフェースクラス
+    VerbalisのWebインターフェースクラス
     """
     
     def __init__(self):
@@ -814,8 +814,8 @@ def create_ui() -> gr.Blocks:
     default_model_id = webui.available_models.get('default_model_id', 0)
     default_styles = webui.model_styles.get(default_model_id, ["Neutral"])
     
-    with gr.Blocks(title="Verbalis Voice Chat Assistant", css=STYLE_CSS) as demo:
-        gr.Markdown("# Verbalis Voice Chat Assistant")
+    with gr.Blocks(title="Verbalis", css=STYLE_CSS) as demo:
+        gr.Markdown("# Verbalis")
         
         # タブ切り替えシステムの追加
         with gr.Tabs() as tabs:
@@ -1345,7 +1345,7 @@ def parse_args():
     Returns:
         解析された引数
     """
-    parser = argparse.ArgumentParser(description="Verbalis Voice Chat Assistant WebUI")
+    parser = argparse.ArgumentParser(description="Verbalis WebUI")
     parser.add_argument("--host", type=str, default=config.HOST, help="ホストアドレス")
     parser.add_argument("--port", type=int, default=config.PORT, help="ポート番号")
     parser.add_argument("--share", action="store_true", help="Gradio共有リンクを生成する")
@@ -1372,6 +1372,6 @@ if __name__ == "__main__":
         logger.error("WebUIは起動しますが、音声合成が正常に動作しない可能性があります。")
     
     # UIの作成と起動
-    logger.info("Verbalis Voice Chat Assistant WebUIを起動しています...")
+    logger.info("Verbalis WebUIを起動しています...")
     demo = create_ui()
     demo.launch(server_name=args.host, server_port=args.port, share=args.share) 
