@@ -1,4 +1,4 @@
-# Verbalis - Voice Chat Assistant
+# Verbalis
 
 
 Verbalisは、[Style-BERT-VITS2](https://github.com/litagin02/Style-Bert-VITS2)による高品質な音声合成を活用した様々な機能を含むUIを目指します
