@@ -283,29 +283,32 @@ class DirectVoiceChat(BaseVoiceChat):
         self.split_interval = 0.5
         self.assist_text_weight = 0.7
         self.volume = 1.0
+        
+        # safetensor ID
+        self.safetensor_id = 0
     
     async def text_to_speech(self, text: str, style: str = None, style_weight: float = None, 
                            sdp_ratio: float = None, noise: float = None, noise_w: float = None, 
                            length: float = None, line_split: bool = None, split_interval: float = None,
                            assist_text_weight: float = None, volume: float = None) -> Optional[bytes]:
         """
-        テキストを音声に変換する
+        テキストから音声を生成する
         
         Args:
             text: 音声に変換するテキスト
-            style: スタイル名
+            style: 音声スタイル
             style_weight: スタイルの重み
             sdp_ratio: SDP比率
-            noise: ノイズ量
-            noise_w: ノイズ幅
-            length: 音声の長さ
-            line_split: 自動分割するかどうか
+            noise: ノイズ
+            noise_w: ノイズの重み
+            length: 長さ
+            line_split: 行分割を行うかどうか
             split_interval: 分割間隔
             assist_text_weight: 補助テキストの重み
             volume: 音量
             
         Returns:
-            Optional[bytes]: WAV形式の音声データ、エラー時はNone
+            Optional[bytes]: WAV形式の音声データ（バイト列）、失敗した場合はNone
         """
         try:
             # パラメータが指定されていない場合はデフォルト値を使用
@@ -321,9 +324,9 @@ class DirectVoiceChat(BaseVoiceChat):
             volume = volume if volume is not None else self.volume
             
             # モデルを取得
-            tts_model = self.model_manager.get_direct_model(self.model_id)
+            tts_model = self.model_manager.get_direct_model(self.model_id, self.safetensor_id)
             if tts_model is None:
-                logger.error(f"モデルの取得に失敗しました (ID: {self.model_id})")
+                logger.error(f"モデルの取得に失敗しました (ID: {self.model_id}, safetensor_id: {self.safetensor_id})")
                 return None
             
             # テキストから音声を生成

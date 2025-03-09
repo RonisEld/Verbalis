@@ -85,19 +85,8 @@ class BaseTTS:
         if len(text) <= 10:
             kwargs['line_split'] = False  # 短いテキストは分割しない
         
+        # キャッシュキーは生成するが、キャッシュチェックは行わない
         cache_key = self.generate_cache_key(text, speaker_id, style)
-
-        # キャッシュをチェック
-        if cache_key in self.cache:
-            if self.verbose:
-                logger.info(f"キャッシュヒット: {speaker_id}/{style}: {text}")
-            
-            # キャッシュの使用順を更新
-            if cache_key in self.cache_keys:
-                self.cache_keys.remove(cache_key)
-            self.cache_keys.append(cache_key)
-            
-            return self.cache[cache_key]
 
         # 別スレッドでTTSを実行
         try:
@@ -120,18 +109,8 @@ class BaseTTS:
                 wf.writeframes(audio)
             buffer.seek(0)
 
-            # キャッシュに保存
+            # 音声データを返す（キャッシュには保存しない）
             audio_data = buffer.read()
-            
-            # キャッシュサイズを制限
-            if len(self.cache_keys) >= self.max_cache_size:
-                # 最も古いキャッシュを削除
-                oldest_key = self.cache_keys.pop(0)
-                del self.cache[oldest_key]
-                
-            self.cache[cache_key] = audio_data
-            self.cache_keys.append(cache_key)
-            
             return audio_data
             
         except Exception as ex:

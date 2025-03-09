@@ -138,6 +138,12 @@ class VerbalisWebUI:
         # 利用可能なモデルの取得
         self.available_models = self.model_manager.get_available_models()
         
+        # デフォルトモデルID
+        self.default_model_id = self.available_models.get('default_model_id', 0)
+        
+        # 現在のsafetensor ID
+        self.current_safetensor_id = 0
+        
         # キャラクター設定の読み込み
         self.characters = self._load_characters()
         
@@ -155,6 +161,9 @@ class VerbalisWebUI:
         
         # モデルIDとスタイルのマッピング
         self.model_styles = self._get_model_styles()
+        
+        # BERTモデルの読み込み
+        load_bert_models(Languages.JP, config.BERT_MODEL_NAME)
     
     def _load_characters(self) -> Dict[str, str]:
         """
@@ -185,7 +194,7 @@ class VerbalisWebUI:
             model_id = model['id']
             try:
                 # モデルを取得してスタイル情報を抽出
-                tts_model = self.model_manager.get_direct_model(model_id)
+                tts_model = self.model_manager.get_direct_model(model_id, self.current_safetensor_id)
                 if tts_model and hasattr(tts_model, 'style_list'):
                     model_styles[model_id] = tts_model.style_list
                 else:
@@ -197,15 +206,43 @@ class VerbalisWebUI:
         
         return model_styles
     
+    def get_safetensors_for_model(self, model_id: int) -> List[Dict]:
+        """
+        指定されたモデルIDに対応するsafetensorファイルのリストを取得する
+        
+        Args:
+            model_id: モデルID
+            
+        Returns:
+            List[Dict]: safetensorファイルの情報リスト
+        """
+        for model in self.available_models.get('models', []):
+            if model['id'] == model_id:
+                return model.get('safetensors_files', [])
+        return []
+    
+    def update_safetensor_id(self, model_id: int, safetensor_id: int) -> None:
+        """
+        現在のsafetensor IDを更新する
+        
+        Args:
+            model_id: モデルID
+            safetensor_id: 新しいsafetensor ID
+        """
+        self.current_safetensor_id = safetensor_id
+        
+        # スタイル情報を更新
+        self.model_styles = self._get_model_styles()
+    
     def initialize_chat(self, model_id: int, character_name: str) -> None:
         """
         チャットを初期化する
         
         Args:
             model_id: 使用するモデルのID
-            character_name: 使用するキャラクターの名前
+            character_name: 使用するキャラクター設定の名前
         """
-        # DirectVoiceChatインスタンスの作成
+        # 音声チャットクラスの初期化
         self.voice_chat = DirectVoiceChat(
             character_name=character_name,
             character_prompts_dir=config.CHARACTER_PROMPTS_DIR,
@@ -213,12 +250,20 @@ class VerbalisWebUI:
             model_manager=self.model_manager
         )
         
+        # モデルIDとキャラクター名を設定
+        self.voice_chat.model_id = model_id
+        self.voice_chat.safetensor_id = self.current_safetensor_id
+        
+        # 音声履歴の初期化
+        self.voice_history = []
+        
         logger.info(f"チャットを初期化しました: モデルID={model_id}, キャラクター={character_name}")
     
     async def chat(self, 
                   message: str, 
                   model_id: int, 
                   character_name: str,
+                  safetensor_id: int = 0,
                   style: str = None,
                   style_weight: float = None,
                   sdp_ratio: float = None,
@@ -232,53 +277,48 @@ class VerbalisWebUI:
                   chat_history: List = None,
                   save_audio: bool = False) -> Tuple[List, Optional[str]]:
         """
-        チャットメッセージを処理し、応答を生成する
+        チャットメッセージを送信し、応答を取得する
         
         Args:
-            message: ユーザーのメッセージ
+            message: ユーザーメッセージ
             model_id: 使用するモデルのID
-            character_name: 使用するキャラクターの名前
+            character_name: 使用するキャラクター設定の名前
+            safetensor_id: 使用するsafetensorファイルのID
             style: 音声スタイル
             style_weight: スタイルの重み
             sdp_ratio: SDP比率
             noise: ノイズ
             noise_w: ノイズの重み
-            length: 音声の長さ
-            line_split: 自動分割
+            length: 長さ
+            line_split: 行分割を行うかどうか
             split_interval: 分割間隔
             assist_text_weight: 補助テキストの重み
             volume: 音量
             chat_history: チャット履歴
-            save_audio: 音声をファイルに保存するかどうか
+            save_audio: 音声を保存するかどうか
             
         Returns:
-            更新されたチャット履歴と音声ファイルのパス
+            Tuple[List, Optional[str]]: チャット履歴と音声ファイルのパス
         """
-        # デフォルト値の設定
-        style = style or config.DEFAULT_STYLE
-        style_weight = style_weight if style_weight is not None else config.DEFAULT_STYLE_WEIGHT
-        sdp_ratio = sdp_ratio if sdp_ratio is not None else config.DEFAULT_SDP_RATIO
-        noise = noise if noise is not None else config.DEFAULT_NOISE
-        noise_w = noise_w if noise_w is not None else config.DEFAULT_NOISEW
-        length = length if length is not None else config.DEFAULT_LENGTH
-        line_split = line_split if line_split is not None else config.DEFAULT_LINE_SPLIT
-        split_interval = split_interval if split_interval is not None else config.DEFAULT_SPLIT_INTERVAL
-        assist_text_weight = assist_text_weight if assist_text_weight is not None else config.DEFAULT_ASSIST_TEXT_WEIGHT
-        volume = volume if volume is not None else config.DEFAULT_VOLUME
-        
+        # チャット履歴の初期化
         if chat_history is None:
             chat_history = []
         
-        # チャットインスタンスが初期化されていない場合は初期化
-        if self.voice_chat is None or self.voice_chat.character_name != character_name:
+        # 音声チャットクラスの初期化（必要な場合）
+        if self.voice_chat is None or self.voice_chat.model_id != model_id or self.current_safetensor_id != safetensor_id:
+            self.current_safetensor_id = safetensor_id
             self.initialize_chat(model_id, character_name)
         
-        # ユーザーのメッセージをチャット履歴に追加
-        chat_history.append({"role": "user", "content": message})
+        # ユーザーメッセージをチャット履歴に追加
+        chat_history.append([message, None])
         
         try:
-            # テキスト応答の生成
-            response_text = await self.voice_chat.generate_response(message)
+            # チャットボットからの応答を取得
+            response = await self.voice_chat.chat(message)
+            response_text = response.text
+            
+            # 応答をチャット履歴に追加
+            chat_history[-1][1] = response_text
             
             # 音声の生成
             audio_data = await self.voice_chat.text_to_speech(
@@ -295,114 +335,119 @@ class VerbalisWebUI:
                 volume=volume
             )
             
-            # 音声の再生
-            if audio_data:
+            # 音声の保存
+            if audio_data and save_audio:
                 self.current_audio = audio_data
                 
-                # 音声をファイルに保存するかどうかを判断
-                if save_audio:
-                    # タイムスタンプを取得
-                    timestamp = datetime.datetime.now()
-                    date_str = timestamp.strftime("%Y%m%d")
-                    time_str = timestamp.strftime("%H%M%S")
-                    
-                    # モデル名を取得
-                    model_name = "unknown"
-                    for model in self.available_models.get('models', []):
-                        if model['id'] == model_id:
-                            model_name = model['name'].replace(" ", "_")
-                            break
-                    
-                    # テキストをファイル名用に整形
-                    safe_text = response_text.strip()
-                    safe_text = safe_text.replace(" ", "_")
-                    safe_text = safe_text.replace("/", "_")
-                    safe_text = safe_text.replace("\\", "_")
-                    safe_text = safe_text.replace(":", "_")
-                    safe_text = safe_text.replace("*", "_")
-                    safe_text = safe_text.replace("?", "_")
-                    safe_text = safe_text.replace("\"", "_")
-                    safe_text = safe_text.replace("<", "_")
-                    safe_text = safe_text.replace(">", "_")
-                    safe_text = safe_text.replace("|", "_")
-                    safe_text = safe_text.replace("\n", "_")
-                    safe_text = safe_text.replace("\r", "_")
-                    safe_text = safe_text.replace("\t", "_")
-                    
-                    # 空の場合はデフォルト名を使用
-                    if not safe_text:
-                        safe_text = "voice"
-                    
-                    # ファイル名の長さを制限（最大100文字）
-                    if len(safe_text) > 100:
-                        safe_text = safe_text[:97] + "..."
-                    
-                    # 出力ディレクトリを作成
-                    output_dir = f"outputs/Chat/{date_str}"
-                    os.makedirs(output_dir, exist_ok=True)
-                    
-                    # ファイル名を生成
-                    filename = f"{safe_text}.wav"
-                    output_path = os.path.join(output_dir, filename)
-                    
-                    # ファイル名が既に存在する場合は連番を付ける
-                    counter = 1
-                    base_name = os.path.splitext(filename)[0]
-                    while os.path.exists(output_path):
-                        filename = f"{base_name}_{counter}.wav"
-                        output_path = os.path.join(output_dir, filename)
-                        counter += 1
-                    
-                    # ファイルに保存
-                    with open(output_path, "wb") as f:
-                        f.write(audio_data)
-                    
-                    # 履歴データをJSONファイルに保存
-                    json_filename = os.path.splitext(filename)[0] + ".json"
-                    json_path = os.path.join(output_dir, json_filename)
-                    
-                    # 保存するデータを作成
-                    metadata = {
-                        "text": response_text,
-                        "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                        "model_id": model_id,
-                        "model_name": model_name,
-                        "character": character_name,
-                        "style": style,
-                        "style_weight": style_weight,
-                        "sdp_ratio": sdp_ratio,
-                        "noise": noise,
-                        "noise_w": noise_w,
-                        "length": length,
-                        "line_split": line_split,
-                        "split_interval": split_interval,
-                        "assist_text_weight": assist_text_weight,
-                        "volume": volume,
-                        "audio_path": output_path,
-                        "user_message": message
-                    }
-                    
-                    # JSONファイルに保存
-                    with open(json_path, "w", encoding="utf-8") as f:
-                        json.dump(metadata, f, ensure_ascii=False, indent=2)
-                else:
-                    # メモリ上で再生するための一時ファイル
-                    output_path = "outputs/chat_temp_audio.wav"
-                    with open(output_path, "wb") as f:
-                        f.write(audio_data)
+                # タイムスタンプを取得
+                timestamp = datetime.datetime.now()
+                date_str = timestamp.strftime("%Y%m%d")
+                time_str = timestamp.strftime("%H%M%S")
                 
-                # チャット履歴の最後の項目を更新
-                chat_history.append({"role": "assistant", "content": response_text})
+                # モデル名を取得
+                model_name = "unknown"
+                for model in self.available_models.get('models', []):
+                    if model['id'] == model_id:
+                        model_name = model['name'].replace(" ", "_")
+                        break
+                
+                # テキストをファイル名用に整形
+                safe_text = response_text.strip()
+                safe_text = safe_text.replace(" ", "_")
+                safe_text = safe_text.replace("/", "_")
+                safe_text = safe_text.replace("\\", "_")
+                safe_text = safe_text.replace(":", "_")
+                safe_text = safe_text.replace("*", "_")
+                safe_text = safe_text.replace("?", "_")
+                safe_text = safe_text.replace("\"", "_")
+                safe_text = safe_text.replace("<", "_")
+                safe_text = safe_text.replace(">", "_")
+                safe_text = safe_text.replace("|", "_")
+                safe_text = safe_text.replace("\n", "_")
+                safe_text = safe_text.replace("\r", "_")
+                safe_text = safe_text.replace("\t", "_")
+                
+                # 空の場合はデフォルト名を使用
+                if not safe_text:
+                    safe_text = "voice"
+                
+                # ファイル名の長さを制限（最大100文字）
+                if len(safe_text) > 100:
+                    safe_text = safe_text[:97] + "..."
+                
+                # 出力ディレクトリを作成
+                output_dir = f"outputs/Chat/{date_str}"
+                os.makedirs(output_dir, exist_ok=True)
+                
+                # ファイル名を生成
+                filename = f"{safe_text}.wav"
+                output_path = os.path.join(output_dir, filename)
+                
+                # ファイル名が既に存在する場合は連番を付ける
+                counter = 1
+                base_name = os.path.splitext(filename)[0]
+                while os.path.exists(output_path):
+                    filename = f"{base_name}_{counter}.wav"
+                    output_path = os.path.join(output_dir, filename)
+                    counter += 1
+                
+                # ファイルに保存
+                with open(output_path, "wb") as f:
+                    f.write(audio_data)
+                
+                # 履歴データをJSONファイルに保存
+                json_filename = os.path.splitext(filename)[0] + ".json"
+                json_path = os.path.join(output_dir, json_filename)
+                
+                # 保存するデータを作成
+                metadata = {
+                    "text": response_text,
+                    "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                    "model_id": model_id,
+                    "model_name": model_name,
+                    "safetensor_id": safetensor_id,
+                    "character": character_name,
+                    "style": style,
+                    "style_weight": style_weight,
+                    "sdp_ratio": sdp_ratio,
+                    "noise": noise,
+                    "noise_w": noise_w,
+                    "length": length,
+                    "line_split": line_split,
+                    "split_interval": split_interval,
+                    "assist_text_weight": assist_text_weight,
+                    "volume": volume,
+                    "audio_path": output_path,
+                    "user_message": message
+                }
+                
+                # JSONファイルに保存
+                with open(json_path, "w", encoding="utf-8") as f:
+                    json.dump(metadata, f, ensure_ascii=False, indent=2)
                 
                 return chat_history, output_path
+            
+            # 音声データがある場合は一時ファイルに保存して返す
+            elif audio_data:
+                self.current_audio = audio_data
+                
+                # 一時ファイルに保存
+                temp_dir = "outputs/temp"
+                os.makedirs(temp_dir, exist_ok=True)
+                temp_path = os.path.join(temp_dir, "temp_audio.wav")
+                
+                with open(temp_path, "wb") as f:
+                    f.write(audio_data)
+                
+                return chat_history, temp_path
+            
+            # 音声データがない場合
             else:
-                # 音声生成に失敗した場合
-                chat_history.append({"role": "assistant", "content": f"{response_text}\n[音声生成に失敗しました]"})
                 return chat_history, None
                 
         except Exception as e:
-            logger.error(f"チャット処理中にエラーが発生しました: {e}")
-            chat_history.append({"role": "assistant", "content": f"エラーが発生しました: {str(e)}"})
+            logger.error(f"チャットエラー: {str(e)}")
+            chat_history[-1][1] = f"エラーが発生しました: {str(e)}"
             return chat_history, None
     
     def reset_chat(self) -> List:
@@ -410,15 +455,16 @@ class VerbalisWebUI:
         チャット履歴をリセットする
         
         Returns:
-            空のチャット履歴
+            List: 空のチャット履歴
         """
-        self.chat_history = []
+        self.voice_chat = None
         return []
-        
+    
     async def generate_voice(self, 
                            text: str, 
                            model_id: int, 
                            character_name: str,
+                           safetensor_id: int = 0,
                            style: str = None,
                            style_weight: float = None,
                            sdp_ratio: float = None,
@@ -431,61 +477,35 @@ class VerbalisWebUI:
                            volume: float = None,
                            voice_history: List = None) -> Tuple[List, Optional[str]]:
         """
-        テキストから直接音声を生成する
+        テキストから音声を生成する
         
         Args:
             text: 音声に変換するテキスト
             model_id: 使用するモデルのID
-            character_name: 使用するキャラクターの名前
+            character_name: 使用するキャラクター設定の名前
+            safetensor_id: 使用するsafetensorファイルのID
             style: 音声スタイル
             style_weight: スタイルの重み
             sdp_ratio: SDP比率
             noise: ノイズ
             noise_w: ノイズの重み
-            length: 音声の長さ
-            line_split: 自動分割
+            length: 長さ
+            line_split: 行分割を行うかどうか
             split_interval: 分割間隔
             assist_text_weight: 補助テキストの重み
             volume: 音量
-            voice_history: 音声生成履歴
+            voice_history: 音声履歴
             
         Returns:
-            更新された音声生成履歴と音声ファイルのパス
+            Tuple[List, Optional[str]]: 音声履歴と音声ファイルのパス
         """
-        # デフォルト値の設定
-        style = style or config.DEFAULT_STYLE
-        style_weight = style_weight if style_weight is not None else config.DEFAULT_STYLE_WEIGHT
-        sdp_ratio = sdp_ratio if sdp_ratio is not None else config.DEFAULT_SDP_RATIO
-        noise = noise if noise is not None else config.DEFAULT_NOISE
-        noise_w = noise_w if noise_w is not None else config.DEFAULT_NOISEW
-        length = length if length is not None else config.DEFAULT_LENGTH
-        line_split = line_split if line_split is not None else config.DEFAULT_LINE_SPLIT
-        split_interval = split_interval if split_interval is not None else config.DEFAULT_SPLIT_INTERVAL
-        assist_text_weight = assist_text_weight if assist_text_weight is not None else config.DEFAULT_ASSIST_TEXT_WEIGHT
-        volume = volume if volume is not None else config.DEFAULT_VOLUME
+        # 音声履歴の初期化
+        if voice_history is None:
+            voice_history = []
         
-        # 履歴の初期化
-        history_list = []
-        if voice_history is not None:
-            # DataFrameの場合はリストに変換
-            if hasattr(voice_history, 'to_dict'):
-                # 既存の履歴データがある場合は保持
-                try:
-                    for i in range(len(voice_history)):
-                        history_list.append({
-                            "text": voice_history.iloc[i, 0] if len(voice_history.columns) > 0 else "",
-                            "timestamp": voice_history.iloc[i, 1] if len(voice_history.columns) > 1 else "",
-                            "model": voice_history.iloc[i, 2] if len(voice_history.columns) > 2 else "",
-                            "character": voice_history.iloc[i, 3] if len(voice_history.columns) > 3 else "",
-                            "style": voice_history.iloc[i, 4] if len(voice_history.columns) > 4 else ""
-                        })
-                except Exception as e:
-                    logger.warning(f"履歴データの変換中にエラーが発生しました: {e}")
-            elif isinstance(voice_history, list):
-                history_list = voice_history
-        
-        # チャットインスタンスが初期化されていない場合は初期化
-        if self.voice_chat is None or self.voice_chat.character_name != character_name:
+        # 音声チャットクラスの初期化（必要な場合）
+        if self.voice_chat is None or self.voice_chat.model_id != model_id or self.current_safetensor_id != safetensor_id:
+            self.current_safetensor_id = safetensor_id
             self.initialize_chat(model_id, character_name)
         
         try:
@@ -579,6 +599,7 @@ class VerbalisWebUI:
                     "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                     "model_id": model_id,
                     "model_name": model_name,
+                    "safetensor_id": safetensor_id,
                     "character": character_name,
                     "style": style,
                     "style_weight": style_weight,
@@ -597,50 +618,74 @@ class VerbalisWebUI:
                 with open(json_path, "w", encoding="utf-8") as f:
                     json.dump(metadata, f, ensure_ascii=False, indent=2)
                 
-                # 音声生成履歴に追加
-                display_timestamp = timestamp.strftime("%Y-%m-%d %H:%M:%S")
-                new_entry = {
-                    "text": text, 
-                    "timestamp": display_timestamp,
-                    "model": model_name,
-                    "character": character_name,
-                    "style": style,
-                    "audio_path": output_path,
-                    "json_path": json_path
-                }
-                history_list.append(new_entry)
+                # 履歴に追加
+                self.voice_history.append(metadata)
                 
-                # インスタンスの履歴も更新
-                self.voice_history.append(new_entry)
+                # 履歴データをDataframeに変換
+                history_data = []
+                for item in self.voice_history:
+                    history_data.append({
+                        "text": item.get("text", ""),
+                        "timestamp": item.get("timestamp", ""),
+                        "model": item.get("model_name", ""),
+                        "character": item.get("character", ""),
+                        "style": item.get("style", "")
+                    })
                 
-                return history_list, output_path
+                return history_data, output_path
+            
+            # 音声データがない場合
             else:
-                # 音声生成に失敗した場合
-                error_entry = {
-                    "text": text, 
+                # エラーメッセージを履歴に追加
+                error_data = {
+                    "text": text,
                     "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "model": "unknown",
+                    "model": model_name,
                     "character": character_name,
                     "style": style,
                     "error": "音声生成に失敗しました"
                 }
-                history_list.append(error_entry)
-                self.voice_history.append(error_entry)
-                return history_list, None
+                self.voice_history.append(error_data)
+                
+                # 履歴データをDataframeに変換
+                history_data = []
+                for item in self.voice_history:
+                    history_data.append({
+                        "text": item.get("text", ""),
+                        "timestamp": item.get("timestamp", ""),
+                        "model": item.get("model_name", "") if "model_name" in item else item.get("model", ""),
+                        "character": item.get("character", ""),
+                        "style": item.get("style", "")
+                    })
+                
+                return history_data, None
                 
         except Exception as e:
-            logger.error(f"音声生成中にエラーが発生しました: {e}")
-            error_entry = {
-                "text": text, 
+            logger.error(f"音声生成エラー: {str(e)}")
+            
+            # エラーメッセージを履歴に追加
+            error_data = {
+                "text": text,
                 "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "model": "unknown",
+                "model": model_name if 'model_name' in locals() else "unknown",
                 "character": character_name,
                 "style": style,
-                "error": f"エラーが発生しました: {str(e)}"
+                "error": f"エラー: {str(e)}"
             }
-            history_list.append(error_entry)
-            self.voice_history.append(error_entry)
-            return history_list, None
+            self.voice_history.append(error_data)
+            
+            # 履歴データをDataframeに変換
+            history_data = []
+            for item in self.voice_history:
+                history_data.append({
+                    "text": item.get("text", ""),
+                    "timestamp": item.get("timestamp", ""),
+                    "model": item.get("model_name", "") if "model_name" in item else item.get("model", ""),
+                    "character": item.get("character", ""),
+                    "style": item.get("style", "")
+                })
+            
+            return history_data, None
             
     def reset_voice_history(self) -> List:
         """
@@ -814,6 +859,13 @@ def create_ui() -> gr.Blocks:
     default_model_id = webui.available_models.get('default_model_id', 0)
     default_styles = webui.model_styles.get(default_model_id, ["Neutral"])
     
+    # デフォルトモデルのsafetensorファイル選択肢
+    default_safetensors = []
+    for model in webui.available_models.get('models', []):
+        if model['id'] == default_model_id:
+            default_safetensors = [(sf['name'], sf['id']) for sf in model.get('safetensors_files', [])]
+            break
+    
     with gr.Blocks(title="Verbalis", css=STYLE_CSS) as demo:
         gr.Markdown("# Verbalis")
         
@@ -869,6 +921,14 @@ def create_ui() -> gr.Blocks:
                                 value=list(model_choices.keys())[0] if model_choices else None
                             )
                             
+                            # safetensorファイル選択ドロップダウンを追加
+                            safetensor_dropdown = gr.Dropdown(
+                                label="safetensorファイル選択",
+                                choices=[sf[0] for sf in default_safetensors],
+                                value=default_safetensors[0][0] if default_safetensors else None,
+                                visible=True if default_safetensors else False
+                            )
+                            
                             character_dropdown = gr.Dropdown(
                                 label="キャラクター選択",
                                 choices=character_choices,
@@ -922,64 +982,52 @@ def create_ui() -> gr.Blocks:
                             )
                             
                             length_slider = gr.Slider(
-                                label="音声の長さ",
-                                minimum=0.5,
+                                label="長さ",
+                                minimum=0.1,
                                 maximum=2.0,
                                 value=config.DEFAULT_LENGTH,
                                 step=0.1
                             )
 
                             line_split_checkbox = gr.Checkbox(
-                                label="文章の自動分割※改行でも分割されます)",
+                                label="自動分割",
                                 value=config.DEFAULT_LINE_SPLIT
                             )
                             
                             split_interval_slider = gr.Slider(
-                                label="分割時の音声間隔を設定(s)",
+                                label="分割間隔",
                                 minimum=0.1,
-                                maximum=2.0,
+                                maximum=5.0,
                                 value=config.DEFAULT_SPLIT_INTERVAL,
                                 step=0.1
                             )
                             
                             assist_text_weight_slider = gr.Slider(
-                                label="補助テキストの重み※デフォルトを推奨",
+                                label="補助テキストの重み",
                                 minimum=0.0,
-                                maximum=2.0,
+                                maximum=1.0,
                                 value=config.DEFAULT_ASSIST_TEXT_WEIGHT,
                                 step=0.1
                             )
                             
-                            # 音声保存の切り替え用チェックボックス
                             save_audio_checkbox = gr.Checkbox(
-                                label="音声をファイルに保存する",
-                                value=False,
-                                info="チェックを入れると音声をoutputs/Chatディレクトリに保存します"
+                                label="音声を保存する",
+                                value=False
                             )
             
             # VoiceGenタブ
             with gr.TabItem("VoiceGen"):
-                gr.Markdown("## 音声生成")
-                gr.Markdown("このタブでは、テキストから直接音声を生成できます。")
-                
                 with gr.Row():
                     # 左側の音声生成エリア
                     with gr.Column(scale=3):
-                        # テキスト入力エリア
                         voice_text_input = gr.Textbox(
-                            placeholder="ここに音声に変換するテキストを入力してください...",
-                            lines=5,
                             label="テキスト入力",
-                            elem_id="voice_text_input"
+                            placeholder="ここに音声に変換するテキストを入力してください...",
+                            lines=5
                         )
                         
-                        with gr.Row():
-                            # 生成ボタン
-                            generate_btn = gr.Button("音声生成", variant="primary")
-                            # リセットボタン
-                            reset_voice_history_btn = gr.Button("履歴をリセット")
+                        generate_btn = gr.Button("音声生成", variant="primary")
                         
-                        # 音声プレイヤー
                         voice_audio_player = gr.Audio(
                             label="音声プレイヤー",
                             type="filepath",
@@ -988,8 +1036,10 @@ def create_ui() -> gr.Blocks:
                             elem_classes="audio-player",
                             autoplay=True
                         )
+                        
+                        reset_voice_history_btn = gr.Button("音声履歴をリセット")
                     
-                    # 右側の設定エリア（Chatタブと同じ設定を使用）
+                    # 右側の設定エリア
                     with gr.Column(scale=1):
                         with gr.Group():
                             voice_model_dropdown = gr.Dropdown(
@@ -998,12 +1048,20 @@ def create_ui() -> gr.Blocks:
                                 value=list(model_choices.keys())[0] if model_choices else None
                             )
                             
+                            # safetensorファイル選択ドロップダウンを追加
+                            voice_safetensor_dropdown = gr.Dropdown(
+                                label="safetensorファイル選択",
+                                choices=[sf[0] for sf in default_safetensors],
+                                value=default_safetensors[0][0] if default_safetensors else None,
+                                visible=True if default_safetensors else False
+                            )
+                            
                             voice_character_dropdown = gr.Dropdown(
                                 label="キャラクター選択",
                                 choices=character_choices,
                                 value=config.DEFAULT_CHARACTER if config.DEFAULT_CHARACTER in character_choices else (character_choices[0] if character_choices else None)
                             )
-
+                            
                             voice_style_dropdown = gr.Dropdown(
                                 label="スタイル",
                                 choices=default_styles,
@@ -1017,7 +1075,7 @@ def create_ui() -> gr.Blocks:
                                 value=config.DEFAULT_STYLE_WEIGHT,
                                 step=0.1
                             )
-
+                            
                             voice_volume_slider = gr.Slider(
                                 label="音量",
                                 minimum=0.0,
@@ -1025,6 +1083,7 @@ def create_ui() -> gr.Blocks:
                                 value=config.DEFAULT_VOLUME,
                                 step=0.1
                             )
+                        
                         with gr.Group():
                             voice_sdp_ratio_slider = gr.Slider(
                                 label="SDP比率",
@@ -1051,52 +1110,47 @@ def create_ui() -> gr.Blocks:
                             )
                             
                             voice_length_slider = gr.Slider(
-                                label="音声の長さ",
-                                minimum=0.5,
+                                label="長さ",
+                                minimum=0.1,
                                 maximum=2.0,
                                 value=config.DEFAULT_LENGTH,
                                 step=0.1
                             )
-
+                            
                             voice_line_split_checkbox = gr.Checkbox(
-                                label="文章の自動分割※改行でも分割されます)",
+                                label="自動分割",
                                 value=config.DEFAULT_LINE_SPLIT
                             )
                             
                             voice_split_interval_slider = gr.Slider(
-                                label="分割時の音声間隔を設定(s)",
+                                label="分割間隔",
                                 minimum=0.1,
-                                maximum=2.0,
+                                maximum=5.0,
                                 value=config.DEFAULT_SPLIT_INTERVAL,
                                 step=0.1
                             )
                             
                             voice_assist_text_weight_slider = gr.Slider(
-                                label="補助テキストの重み※デフォルトを推奨",
+                                label="補助テキストの重み",
                                 minimum=0.0,
-                                maximum=2.0,
+                                maximum=1.0,
                                 value=config.DEFAULT_ASSIST_TEXT_WEIGHT,
                                 step=0.1
                             )
                 
-                # 音声生成履歴表示エリア（タブの最下部に配置）
-                gr.Markdown("## 音声生成履歴")
-                
-                # 年月日ディレクトリ選択ドロップダウン
-                date_dirs = webui.get_output_directories()
-                date_dir_choices = [d[1] for d in date_dirs]
-                
-                date_dir_dropdown = gr.Dropdown(
-                    label="日付を選択",
-                    choices=date_dir_choices,
-                    value=None,
-                    type="index",
-                    interactive=True,
-                    allow_custom_value=True
-                )
-                
-                # 履歴表示ボタン
-                show_history_btn = gr.Button("履歴を表示", variant="primary")
+                # 履歴表示エリア
+                with gr.Row():
+                    with gr.Column():
+                        # 履歴ディレクトリ選択
+                        date_dirs = webui.get_output_directories()
+                        date_dir_dropdown = gr.Dropdown(
+                            label="履歴ディレクトリ",
+                            choices=date_dirs,
+                            value=date_dirs[0] if date_dirs else None,
+                            type="index"
+                        )
+                        
+                        show_history_btn = gr.Button("履歴を表示")
                 
                 # 更新メッセージ表示用
                 refresh_message = gr.Markdown("", visible=True)
@@ -1118,42 +1172,99 @@ def create_ui() -> gr.Blocks:
                     value=empty_history_data
                 )
         
-        # モデル選択時にスタイル選択肢を更新する関数
-        def update_style_choices(model_dropdown_value):
+        # モデル選択時にsafetensorファイルとスタイル選択肢を更新する関数
+        def update_safetensor_choices(model_dropdown_value):
             if not model_dropdown_value:
-                return gr.Dropdown.update(choices=["Neutral"], value="Neutral")
+                return gr.update(choices=[], value=None, visible=False), gr.update(choices=["Neutral"], value="Neutral")
             
             model_id = model_choices[model_dropdown_value]
+            
+            # safetensorファイルのリストを取得
+            safetensors = webui.get_safetensors_for_model(model_id)
+            safetensor_choices = [sf['name'] for sf in safetensors]
+            
+            # スタイルのリストを取得
             styles = webui.model_styles.get(model_id, ["Neutral"])
             
-            return gr.Dropdown.update(choices=styles, value=styles[0] if styles else "Neutral")
+            # safetensorファイルがある場合は表示、ない場合は非表示
+            if safetensor_choices:
+                return gr.update(choices=safetensor_choices, value=safetensor_choices[0], visible=True), gr.update(choices=styles, value=styles[0] if styles else "Neutral")
+            else:
+                return gr.update(choices=[], value=None, visible=False), gr.update(choices=styles, value=styles[0] if styles else "Neutral")
+        
+        # safetensor選択時にスタイル選択肢を更新する関数
+        def update_style_on_safetensor_change(model_dropdown_value, safetensor_name):
+            if not model_dropdown_value or not safetensor_name:
+                return gr.update(choices=["Neutral"], value="Neutral")
+            
+            model_id = model_choices[model_dropdown_value]
+            
+            # safetensorのIDを取得
+            safetensor_id = 0
+            safetensors = webui.get_safetensors_for_model(model_id)
+            for sf in safetensors:
+                if sf['name'] == safetensor_name:
+                    safetensor_id = sf['id']
+                    break
+            
+            # safetensor_idを更新
+            webui.update_safetensor_id(model_id, safetensor_id)
+            
+            # 更新されたスタイルのリストを取得
+            styles = webui.model_styles.get(model_id, ["Neutral"])
+            
+            return gr.update(choices=styles, value=styles[0] if styles else "Neutral")
         
         # モデル選択変更時のイベント
         model_dropdown.change(
-            fn=update_style_choices,
+            fn=update_safetensor_choices,
             inputs=[model_dropdown],
+            outputs=[safetensor_dropdown, style_dropdown]
+        )
+        
+        # safetensor選択変更時のイベント
+        safetensor_dropdown.change(
+            fn=update_style_on_safetensor_change,
+            inputs=[model_dropdown, safetensor_dropdown],
             outputs=[style_dropdown]
         )
         
         # VoiceGenタブのモデル選択変更時のイベント
         voice_model_dropdown.change(
-            fn=update_style_choices,
+            fn=update_safetensor_choices,
             inputs=[voice_model_dropdown],
+            outputs=[voice_safetensor_dropdown, voice_style_dropdown]
+        )
+        
+        # VoiceGenタブのsafetensor選択変更時のイベント
+        voice_safetensor_dropdown.change(
+            fn=update_style_on_safetensor_change,
+            inputs=[voice_model_dropdown, voice_safetensor_dropdown],
             outputs=[voice_style_dropdown]
         )
         
         # イベントハンドラの設定
-        async def on_submit(message, chat_history, model_dropdown, character_dropdown, style, style_weight, 
+        async def on_submit(message, chat_history, model_dropdown, safetensor_dropdown, character_dropdown, style, style_weight, 
                            sdp_ratio, noise, noise_w, length, line_split, split_interval, assist_text_weight, volume, save_audio):
             if not message:
-                return chat_history, None
+                return chat_history, None, ""
             
             model_id = model_choices[model_dropdown]
+            
+            # safetensor_idを取得
+            safetensor_id = 0
+            if safetensor_dropdown:
+                safetensors = webui.get_safetensors_for_model(model_id)
+                for sf in safetensors:
+                    if sf['name'] == safetensor_dropdown:
+                        safetensor_id = sf['id']
+                        break
             
             result = await webui.chat(
                 message=message,
                 model_id=model_id,
                 character_name=character_dropdown,
+                safetensor_id=safetensor_id,
                 style=style,
                 style_weight=style_weight,
                 sdp_ratio=sdp_ratio,
@@ -1168,32 +1279,33 @@ def create_ui() -> gr.Blocks:
                 save_audio=save_audio
             )
             
-            return result[0], result[1]
+            # テキストボックスをクリア
+            return result[0], result[1], ""
         
         # テキストボックスのサブミットイベント（Enterキーで送信）
         msg.submit(
             fn=on_submit,
             inputs=[
-                msg, chatbot, model_dropdown, character_dropdown,
+                msg, chatbot, model_dropdown, safetensor_dropdown, character_dropdown,
                 style_dropdown, style_weight_slider, sdp_ratio_slider,
                 noise_slider, noise_w_slider, length_slider,
                 line_split_checkbox, split_interval_slider,
                 assist_text_weight_slider, volume_slider, save_audio_checkbox
             ],
-            outputs=[chatbot, audio_player]
+            outputs=[chatbot, audio_player, msg]
         )
         
         # 送信ボタンのクリックイベント
         send_btn.click(
             fn=on_submit,
             inputs=[
-                msg, chatbot, model_dropdown, character_dropdown,
+                msg, chatbot, model_dropdown, safetensor_dropdown, character_dropdown,
                 style_dropdown, style_weight_slider, sdp_ratio_slider,
                 noise_slider, noise_w_slider, length_slider,
                 line_split_checkbox, split_interval_slider,
                 assist_text_weight_slider, volume_slider, save_audio_checkbox
             ],
-            outputs=[chatbot, audio_player]
+            outputs=[chatbot, audio_player, msg]
         )
         
         # リセットボタンのクリックイベント
@@ -1204,17 +1316,27 @@ def create_ui() -> gr.Blocks:
         )
         
         # VoiceGenタブのイベントハンドラ
-        async def on_generate_voice(text, voice_history, model_dropdown, character_dropdown, style, style_weight, 
-                                  sdp_ratio, noise, noise_w, length, line_split, split_interval, assist_text_weight, volume):
+        async def on_generate_voice(text, voice_history, model_dropdown, safetensor_dropdown, character_dropdown, style, style_weight, 
+                                   sdp_ratio, noise, noise_w, length, line_split, split_interval, assist_text_weight, volume):
             if not text:
                 return voice_history, None
             
             model_id = model_choices[model_dropdown]
             
+            # safetensor_idを取得
+            safetensor_id = 0
+            if safetensor_dropdown:
+                safetensors = webui.get_safetensors_for_model(model_id)
+                for sf in safetensors:
+                    if sf['name'] == safetensor_dropdown:
+                        safetensor_id = sf['id']
+                        break
+            
             result = await webui.generate_voice(
                 text=text,
                 model_id=model_id,
                 character_name=character_dropdown,
+                safetensor_id=safetensor_id,
                 style=style,
                 style_weight=style_weight,
                 sdp_ratio=sdp_ratio,
@@ -1255,7 +1377,7 @@ def create_ui() -> gr.Blocks:
         generate_btn.click(
             fn=on_generate_voice,
             inputs=[
-                voice_text_input, voice_history_display, voice_model_dropdown, voice_character_dropdown,
+                voice_text_input, voice_history_display, voice_model_dropdown, voice_safetensor_dropdown, voice_character_dropdown,
                 voice_style_dropdown, voice_style_weight_slider, voice_sdp_ratio_slider,
                 voice_noise_slider, voice_noise_w_slider, voice_length_slider,
                 voice_line_split_checkbox, voice_split_interval_slider,

@@ -27,7 +27,10 @@ release/
 model_assets/*
 !model_assets/.gitkeep
 .env
-character_prompts/Edina.txt
+character_prompts/*.txt
+!character_prompts/default.txt
+!character_prompts/formal.txt
+!character_prompts/friendly.txt
 configuration/appconfig.py
 configuration/.env
 outputs/
