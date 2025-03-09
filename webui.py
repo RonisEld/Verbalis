@@ -310,7 +310,7 @@ class VerbalisWebUI:
             self.initialize_chat(model_id, character_name)
         
         # ユーザーメッセージをチャット履歴に追加
-        chat_history.append([message, None])
+        chat_history.append({"role": "user", "content": message})
         
         try:
             # チャットボットからの応答を取得
@@ -318,7 +318,7 @@ class VerbalisWebUI:
             response_text = response.text
             
             # 応答をチャット履歴に追加
-            chat_history[-1][1] = response_text
+            chat_history.append({"role": "assistant", "content": response_text})
             
             # 音声の生成
             audio_data = await self.voice_chat.text_to_speech(
@@ -447,7 +447,7 @@ class VerbalisWebUI:
                 
         except Exception as e:
             logger.error(f"チャットエラー: {str(e)}")
-            chat_history[-1][1] = f"エラーが発生しました: {str(e)}"
+            chat_history[-1]["content"] = f"エラーが発生しました: {str(e)}"
             return chat_history, None
     
     def reset_chat(self) -> List:

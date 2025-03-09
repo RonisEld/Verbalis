@@ -287,6 +287,26 @@ class DirectVoiceChat(BaseVoiceChat):
         # safetensor ID
         self.safetensor_id = 0
     
+    async def chat(self, message: str) -> Any:
+        """
+        ユーザーメッセージに対する応答を生成する
+        
+        Args:
+            message: ユーザーの入力メッセージ
+            
+        Returns:
+            Any: 応答オブジェクト（テキストを含む）
+        """
+        # 応答を生成
+        response_text = await self.generate_response(message)
+        
+        # 応答オブジェクトを作成（テキストを含む）
+        class Response:
+            def __init__(self, text):
+                self.text = text
+        
+        return Response(response_text)
+    
     async def text_to_speech(self, text: str, style: str = None, style_weight: float = None, 
                            sdp_ratio: float = None, noise: float = None, noise_w: float = None, 
                            length: float = None, line_split: bool = None, split_interval: float = None,
@@ -390,6 +410,26 @@ class APIVoiceChat(BaseVoiceChat):
         self.split_interval = 0.5
         self.assist_text_weight = 0.7
         self.volume = 1.0
+    
+    async def chat(self, message: str) -> Any:
+        """
+        ユーザーメッセージに対する応答を生成する
+        
+        Args:
+            message: ユーザーの入力メッセージ
+            
+        Returns:
+            Any: 応答オブジェクト（テキストを含む）
+        """
+        # 応答を生成
+        response_text = await self.generate_response(message)
+        
+        # 応答オブジェクトを作成（テキストを含む）
+        class Response:
+            def __init__(self, text):
+                self.text = text
+        
+        return Response(response_text)
     
     def _get_available_models(self) -> Dict:
         """
