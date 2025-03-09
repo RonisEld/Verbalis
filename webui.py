@@ -17,6 +17,8 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 from dotenv import load_dotenv
 import google.generativeai as genai
+import subprocess
+import time
 
 # 設定ファイルの読み込み
 load_dotenv("configuration/.env")
@@ -621,18 +623,45 @@ class VerbalisWebUI:
                 # 履歴に追加
                 self.voice_history.append(metadata)
                 
-                # 履歴データをDataframeに変換
-                history_data = []
+                # 履歴をDataframeに変換
+                df_data = []
                 for item in self.voice_history:
-                    history_data.append({
-                        "text": item.get("text", ""),
-                        "timestamp": item.get("timestamp", ""),
-                        "model": item.get("model_name", ""),
-                        "character": item.get("character", ""),
-                        "style": item.get("style", "")
-                    })
+                    # エラーがある場合はエラーメッセージを表示
+                    if "error" in item:
+                        df_data.append([
+                            item.get("text", ""), 
+                            item.get("timestamp", ""),
+                            item.get("model", ""),
+                            item.get("character", ""), 
+                            item.get("style", ""),
+                            "♻️",  # 再利用ボタン
+                            "🗑️"  # 削除ボタン
+                        ])
+                    else:
+                        # safetensor_idからsafetensor名を取得
+                        safetensor_name = ""
+                        if "model_id" in item and "safetensor_id" in item:
+                            model_id = item.get("model_id")
+                            safetensor_id = item.get("safetensor_id")
+                            safetensors = self.get_safetensors_for_model(model_id)
+                            for sf in safetensors:
+                                if sf.get("id") == safetensor_id:
+                                    # 拡張子を削除
+                                    sf_name = sf.get("name", "")
+                                    safetensor_name = os.path.splitext(sf_name)[0]
+                                    break
+                        
+                        df_data.append([
+                            item.get("text", ""), 
+                            item.get("timestamp", ""),
+                            safetensor_name if safetensor_name else item.get("model_name", ""),
+                            item.get("character", ""), 
+                            item.get("style", ""),
+                            "♻️",  # 再利用ボタン
+                            "🗑️"  # 削除ボタン
+                        ])
                 
-                return history_data, output_path
+                return df_data, output_path
             
             # 音声データがない場合
             else:
@@ -647,18 +676,45 @@ class VerbalisWebUI:
                 }
                 self.voice_history.append(error_data)
                 
-                # 履歴データをDataframeに変換
-                history_data = []
+                # 履歴をDataframeに変換
+                df_data = []
                 for item in self.voice_history:
-                    history_data.append({
-                        "text": item.get("text", ""),
-                        "timestamp": item.get("timestamp", ""),
-                        "model": item.get("model_name", "") if "model_name" in item else item.get("model", ""),
-                        "character": item.get("character", ""),
-                        "style": item.get("style", "")
-                    })
+                    # エラーがある場合はエラーメッセージを表示
+                    if "error" in item:
+                        df_data.append([
+                            item.get("text", ""), 
+                            item.get("timestamp", ""),
+                            item.get("model", ""),
+                            item.get("character", ""), 
+                            item.get("style", ""),
+                            "♻️",  # 再利用ボタン
+                            "🗑️"  # 削除ボタン
+                        ])
+                    else:
+                        # safetensor_idからsafetensor名を取得
+                        safetensor_name = ""
+                        if "model_id" in item and "safetensor_id" in item:
+                            model_id = item.get("model_id")
+                            safetensor_id = item.get("safetensor_id")
+                            safetensors = self.get_safetensors_for_model(model_id)
+                            for sf in safetensors:
+                                if sf.get("id") == safetensor_id:
+                                    # 拡張子を削除
+                                    sf_name = sf.get("name", "")
+                                    safetensor_name = os.path.splitext(sf_name)[0]
+                                    break
+                        
+                        df_data.append([
+                            item.get("text", ""), 
+                            item.get("timestamp", ""),
+                            safetensor_name if safetensor_name else item.get("model_name", ""),
+                            item.get("character", ""), 
+                            item.get("style", ""),
+                            "♻️",  # 再利用ボタン
+                            "🗑️"  # 削除ボタン
+                        ])
                 
-                return history_data, None
+                return df_data, None
                 
         except Exception as e:
             logger.error(f"音声生成エラー: {str(e)}")
@@ -674,18 +730,45 @@ class VerbalisWebUI:
             }
             self.voice_history.append(error_data)
             
-            # 履歴データをDataframeに変換
-            history_data = []
+            # 履歴をDataframeに変換
+            df_data = []
             for item in self.voice_history:
-                history_data.append({
-                    "text": item.get("text", ""),
-                    "timestamp": item.get("timestamp", ""),
-                    "model": item.get("model_name", "") if "model_name" in item else item.get("model", ""),
-                    "character": item.get("character", ""),
-                    "style": item.get("style", "")
-                })
+                # エラーがある場合はエラーメッセージを表示
+                if "error" in item:
+                    df_data.append([
+                        item.get("text", ""), 
+                        item.get("timestamp", ""),
+                        item.get("model", ""),
+                        item.get("character", ""), 
+                        item.get("style", ""),
+                        "♻️",  # 再利用ボタン
+                        "🗑️"  # 削除ボタン
+                    ])
+                else:
+                    # safetensor_idからsafetensor名を取得
+                    safetensor_name = ""
+                    if "model_id" in item and "safetensor_id" in item:
+                        model_id = item.get("model_id")
+                        safetensor_id = item.get("safetensor_id")
+                        safetensors = self.get_safetensors_for_model(model_id)
+                        for sf in safetensors:
+                            if sf.get("id") == safetensor_id:
+                                # 拡張子を削除
+                                sf_name = sf.get("name", "")
+                                safetensor_name = os.path.splitext(sf_name)[0]
+                                break
+                    
+                    df_data.append([
+                        item.get("text", ""), 
+                        item.get("timestamp", ""),
+                        safetensor_name if safetensor_name else item.get("model_name", ""),
+                        item.get("character", ""), 
+                        item.get("style", ""),
+                        "♻️",  # 再利用ボタン
+                        "🗑️"  # 削除ボタン
+                    ])
             
-            return history_data, None
+            return df_data, None
             
     def reset_voice_history(self) -> List:
         """
@@ -697,6 +780,71 @@ class VerbalisWebUI:
         self.voice_history = []
         return []
         
+    def delete_voice_history_entry(self, timestamp: str, text: str) -> List:
+        """
+        指定された音声生成履歴エントリを削除する
+        
+        Args:
+            timestamp: タイムスタンプ
+            text: テキスト
+            
+        Returns:
+            更新された音声生成履歴
+        """
+        # 削除対象のエントリを検索
+        target_entry = None
+        for entry in self.voice_history:
+            if entry.get("timestamp") == timestamp and entry.get("text") == text:
+                target_entry = entry
+                break
+                
+        if target_entry:
+            # 音声ファイルとJSONファイルを削除
+            audio_path = target_entry.get("audio_path")
+            json_path = target_entry.get("json_path")
+            
+            try:
+                if audio_path and os.path.exists(audio_path):
+                    os.remove(audio_path)
+                    logger.info(f"音声ファイルを削除しました: {audio_path}")
+                    
+                if json_path and os.path.exists(json_path):
+                    os.remove(json_path)
+                    logger.info(f"JSONファイルを削除しました: {json_path}")
+            except Exception as e:
+                logger.error(f"ファイル削除エラー: {str(e)}")
+            
+            # 履歴からエントリを削除
+            self.voice_history.remove(target_entry)
+            
+        # 更新された履歴データをDataframeに変換
+        df_data = []
+        for item in self.voice_history:
+            # safetensor_idからsafetensor名を取得
+            safetensor_name = ""
+            if "model_id" in item and "safetensor_id" in item:
+                model_id = item.get("model_id")
+                safetensor_id = item.get("safetensor_id")
+                safetensors = self.get_safetensors_for_model(model_id)
+                for sf in safetensors:
+                    if sf.get("id") == safetensor_id:
+                        # 拡張子を削除
+                        sf_name = sf.get("name", "")
+                        safetensor_name = os.path.splitext(sf_name)[0]
+                        break
+            
+            df_data.append([
+                item.get("text", ""), 
+                item.get("timestamp", ""),
+                safetensor_name if safetensor_name else item.get("model_name", ""),
+                item.get("character", ""), 
+                item.get("style", ""),
+                "♻️",  # 再利用ボタン
+                "🗑️"  # 削除ボタン
+            ])
+            
+        return df_data
+    
     def get_output_directories(self) -> List[str]:
         """
         outputsディレクトリ内の年月日ディレクトリのリストを取得する
@@ -778,8 +926,20 @@ class VerbalisWebUI:
                         "text": metadata.get("text", ""),
                         "timestamp": metadata.get("timestamp", ""),
                         "model": metadata.get("model_name", ""),
+                        "model_id": metadata.get("model_id", 0),
+                        "model_name": metadata.get("model_name", ""),
+                        "safetensor_id": metadata.get("safetensor_id", 0),
                         "character": metadata.get("character", ""),
                         "style": metadata.get("style", ""),
+                        "style_weight": metadata.get("style_weight"),
+                        "sdp_ratio": metadata.get("sdp_ratio"),
+                        "noise": metadata.get("noise"),
+                        "noise_w": metadata.get("noise_w"),
+                        "length": metadata.get("length"),
+                        "line_split": metadata.get("line_split"),
+                        "split_interval": metadata.get("split_interval"),
+                        "assist_text_weight": metadata.get("assist_text_weight"),
+                        "volume": metadata.get("volume"),
                         "audio_path": audio_path,
                         "json_path": json_path
                     }
@@ -1043,29 +1203,33 @@ def create_ui() -> gr.Blocks:
                     with gr.Column(scale=1):
                         with gr.Group():
                             voice_model_dropdown = gr.Dropdown(
-                                label="モデル選択",
+                                label="モデル",
                                 choices=list(model_choices.keys()),
-                                value=list(model_choices.keys())[0] if model_choices else None
+                                value=list(model_choices.keys())[0] if model_choices else None,
+                                allow_custom_value=True  # 選択肢にない値でも受け入れる
                             )
                             
                             # safetensorファイル選択ドロップダウンを追加
                             voice_safetensor_dropdown = gr.Dropdown(
-                                label="safetensorファイル選択",
-                                choices=[sf[0] for sf in default_safetensors],
-                                value=default_safetensors[0][0] if default_safetensors else None,
-                                visible=True if default_safetensors else False
+                                label="Safetensorファイル",
+                                choices=[sf['name'] for sf in webui.get_safetensors_for_model(model_choices[list(model_choices.keys())[0] if model_choices else 0])],
+                                value=webui.get_safetensors_for_model(model_choices[list(model_choices.keys())[0] if model_choices else 0])[0]['name'] if webui.get_safetensors_for_model(model_choices[list(model_choices.keys())[0] if model_choices else 0]) else None,
+                                visible=True,
+                                allow_custom_value=True  # 選択肢にない値でも受け入れる
                             )
                             
                             voice_character_dropdown = gr.Dropdown(
-                                label="キャラクター選択",
+                                label="キャラクター",
                                 choices=character_choices,
-                                value=config.DEFAULT_CHARACTER if config.DEFAULT_CHARACTER in character_choices else (character_choices[0] if character_choices else None)
+                                value=character_choices[0] if character_choices else None,
+                                allow_custom_value=True  # 選択肢にない値でも受け入れる
                             )
                             
                             voice_style_dropdown = gr.Dropdown(
                                 label="スタイル",
                                 choices=default_styles,
-                                value=default_styles[0] if default_styles else config.DEFAULT_STYLE
+                                value=default_styles[0] if default_styles else "Neutral",
+                                allow_custom_value=True  # 選択肢にない値でも受け入れる
                             )
                             
                             voice_style_weight_slider = gr.Slider(
@@ -1144,13 +1308,17 @@ def create_ui() -> gr.Blocks:
                         # 履歴ディレクトリ選択
                         date_dirs = webui.get_output_directories()
                         date_dir_dropdown = gr.Dropdown(
-                            label="履歴ディレクトリ",
+                            label="履歴ディレクトリ",                           
                             choices=date_dirs,
-                            value=date_dirs[0] if date_dirs else None,
                             type="index"
                         )
                         
-                        show_history_btn = gr.Button("履歴を表示")
+                        # ボタンを2列に配置
+                        with gr.Row():
+                            with gr.Column(scale=1):
+                                show_history_btn = gr.Button("履歴を表示")
+                            with gr.Column(scale=1):
+                                open_folder_btn = gr.Button("フォルダを開く")
                 
                 # 更新メッセージ表示用
                 refresh_message = gr.Markdown("", visible=True)
@@ -1159,16 +1327,16 @@ def create_ui() -> gr.Blocks:
                 empty_history_data = []
                 
                 voice_history_display = gr.Dataframe(
-                    headers=["テキスト", "生成日時", "モデル", "キャラクター", "スタイル"],
-                    datatype=["str", "str", "str", "str", "str"],
-                    col_count=(5, "fixed"),
+                    headers=["テキスト", "生成日時", "モデル", "キャラクター", "スタイル", "再利用", "削除"],
+                    datatype=["str", "str", "str", "str", "str", "str", "str"],
+                    col_count=(7, "fixed"),
                     row_count=(10, "dynamic"),
                     interactive=False,
                     elem_id="voice_history_display",
                     elem_classes="dataframe-container",
-                    label="行をクリックすることで、音声を再生できます。",
+                    label="行をクリックすることで、音声を再生できます。再利用ボタンで設定を反映、削除ボタンで履歴を削除できます。",
                     wrap=True,
-                    column_widths=["40%", "15%", "15%", "15%", "15%"],
+                    column_widths=["30%", "15%", "15%", "15%", "10%", "7.5%", "7.5%"],
                     value=empty_history_data
                 )
         
@@ -1350,28 +1518,8 @@ def create_ui() -> gr.Blocks:
                 voice_history=voice_history
             )
             
-            # 履歴をDataframeに変換
-            df_data = []
-            for item in result[0]:
-                # エラーがある場合はエラーメッセージを表示
-                if "error" in item:
-                    df_data.append([
-                        item.get("text", ""), 
-                        item.get("timestamp", ""),
-                        item.get("model", ""),
-                        item.get("character", ""), 
-                        item.get("style", "")
-                    ])
-                else:
-                    df_data.append([
-                        item.get("text", ""), 
-                        item.get("timestamp", ""),
-                        item.get("model", ""),
-                        item.get("character", ""), 
-                        item.get("style", "")
-                    ])
-            
-            return df_data, result[1]
+            # 結果をそのまま返す（既にDataframe形式になっている）
+            return result[0], result[1]
         
         # 音声生成ボタンのクリックイベント
         generate_btn.click(
@@ -1395,6 +1543,10 @@ def create_ui() -> gr.Blocks:
         
         # 履歴から音声を再生する関数
         def play_from_history(evt: gr.SelectData, voice_history):
+            # 削除ボタンまたは再利用ボタンがクリックされた場合は何もしない
+            if evt.index[1] == 6 or evt.index[1] == 5:  # 削除ボタン列または再利用ボタン列のインデックス
+                return None
+                
             row_idx = evt.index[0]
             # 履歴データから対応する音声ファイルを探す
             try:
@@ -1425,6 +1577,190 @@ def create_ui() -> gr.Blocks:
             outputs=[voice_audio_player]
         )
         
+        # 履歴から削除する関数
+        def delete_from_history(evt: gr.SelectData, voice_history):
+            # 削除ボタンがクリックされた場合のみ処理
+            if evt.index[1] == 6:  # 削除ボタン列のインデックス
+                row_idx = evt.index[0]
+                try:
+                    # 現在の履歴データを取得
+                    text = voice_history.iloc[row_idx, 0] if len(voice_history.columns) > 0 else ""
+                    timestamp = voice_history.iloc[row_idx, 1] if len(voice_history.columns) > 1 else ""
+                    
+                    # 履歴エントリを削除
+                    updated_history = webui.delete_voice_history_entry(timestamp, text)
+                    
+                    # 更新された履歴データをそのまま返す
+                    return updated_history
+                except Exception as e:
+                    logger.error(f"履歴の削除中にエラーが発生しました: {e}")
+            
+            # 削除ボタン以外がクリックされた場合は何もしない
+            return voice_history
+        
+        # 履歴からの削除イベント
+        voice_history_display.select(
+            fn=delete_from_history,
+            inputs=[voice_history_display],
+            outputs=[voice_history_display]
+        )
+        
+        # 履歴から設定を再利用する関数
+        def reuse_from_history(evt: gr.SelectData, voice_history, model_dropdown, safetensor_dropdown, character_dropdown, style_dropdown, 
+                              style_weight, sdp_ratio, noise, noise_w, length, line_split, split_interval, assist_text_weight, volume, text_input):
+            # 再利用ボタンがクリックされた場合のみ処理
+            if evt.index[1] == 5:  # 再利用ボタン列のインデックス
+                row_idx = evt.index[0]
+                try:
+                    # 現在の履歴データを取得
+                    text = voice_history.iloc[row_idx, 0] if len(voice_history.columns) > 0 else ""
+                    timestamp = voice_history.iloc[row_idx, 1] if len(voice_history.columns) > 1 else ""
+                    
+                    # 対応する履歴エントリを検索
+                    target_entry = None
+                    for entry in webui.voice_history:
+                        if entry.get("timestamp") == timestamp and entry.get("text") == text:
+                            target_entry = entry
+                            break
+                    
+                    if not target_entry:
+                        return model_dropdown, safetensor_dropdown, character_dropdown, style_dropdown, style_weight, sdp_ratio, noise, noise_w, length, line_split, split_interval, assist_text_weight, volume, text_input
+                    
+                    # テキスト内容を取得
+                    text_content = target_entry.get("text", "")
+                    
+                    # モデルIDを取得
+                    model_id = target_entry.get("model_id")
+                    model_name = None
+                    
+                    # モデル名を検索
+                    for model_key, model_id_value in model_choices.items():
+                        if model_id_value == model_id:
+                            model_name = model_key
+                            break
+                    
+                    # モデルが見つからない場合は現在のモデルを使用
+                    if not model_name:
+                        logger.warning(f"モデルID {model_id} に対応するモデル名が見つかりません。現在のモデルを使用します。")
+                        model_name = model_dropdown
+                        model_id = model_choices[model_dropdown]
+                    
+                    # 先にモデルの選択肢を更新するために、update_safetensor_choices関数を呼び出す
+                    safetensor_update, style_update = update_safetensor_choices(model_name)
+                    available_safetensors = safetensor_update["choices"]
+                    
+                    # 履歴のsafetensor_idを取得
+                    history_safetensor_id = target_entry.get("safetensor_id", 0)
+                    
+                    # 選択されたモデルのsafetensorリストから、履歴のsafetensor_idに最も近いものを選択
+                    safetensor_name = None
+                    
+                    # 1. まず、選択されたモデルのsafetensorリストを取得
+                    current_model_safetensors = webui.get_safetensors_for_model(model_id)
+                    
+                    # 2. 履歴のsafetensor_idと一致するsafetensorを探す
+                    for sf in current_model_safetensors:
+                        if sf.get("id") == history_safetensor_id:
+                            safetensor_name = sf.get("name")
+                            break
+                    
+                    # 3. 一致するものがなければ、最初のsafetensorを使用
+                    if not safetensor_name:
+                        if available_safetensors:
+                            logger.warning(f"Safetensor ID {history_safetensor_id} に対応するsafetensorが見つかりません。最初の選択肢を使用します。")
+                            safetensor_name = available_safetensors[0]
+                        else:
+                            logger.warning(f"利用可能なSafetensorがありません。現在の選択を維持します。")
+                            safetensor_name = safetensor_dropdown
+                    
+                    # 4. 選択されたsafetensor名が選択肢にない場合は、最初の選択肢を使用
+                    if safetensor_name not in available_safetensors:
+                        if available_safetensors:
+                            logger.warning(f"Safetensor {safetensor_name} が選択肢にありません。最初の選択肢を使用します。")
+                            safetensor_name = available_safetensors[0]
+                        else:
+                            logger.warning(f"利用可能なSafetensorがありません。現在の選択を維持します。")
+                            safetensor_name = safetensor_dropdown
+                    
+                    # キャラクター名を取得
+                    character_name = target_entry.get("character", "")
+                    
+                    # スタイル名を取得
+                    style_name = target_entry.get("style", "")
+                    
+                    # スタイルの選択肢を更新
+                    style_update = update_style_on_safetensor_change(model_name, safetensor_name)
+                    available_styles = style_update["choices"]
+                    
+                    # スタイル名が選択肢にない場合は最初の選択肢を使用
+                    if style_name not in available_styles:
+                        if available_styles:
+                            logger.warning(f"スタイル {style_name} が選択肢にありません。最初の選択肢を使用します。")
+                            style_name = available_styles[0]
+                        else:
+                            logger.warning(f"利用可能なスタイルがありません。現在の選択を維持します。")
+                            style_name = style_dropdown
+                    
+                    # その他のパラメータを取得（現在の値をデフォルトとして使用）
+                    style_weight_value = float(target_entry.get("style_weight", style_weight)) if target_entry.get("style_weight") is not None else style_weight
+                    sdp_ratio_value = float(target_entry.get("sdp_ratio", sdp_ratio)) if target_entry.get("sdp_ratio") is not None else sdp_ratio
+                    noise_value = float(target_entry.get("noise", noise)) if target_entry.get("noise") is not None else noise
+                    noise_w_value = float(target_entry.get("noise_w", noise_w)) if target_entry.get("noise_w") is not None else noise_w
+                    length_value = float(target_entry.get("length", length)) if target_entry.get("length") is not None else length
+                    line_split_value = bool(target_entry.get("line_split", line_split)) if target_entry.get("line_split") is not None else line_split
+                    split_interval_value = float(target_entry.get("split_interval", split_interval)) if target_entry.get("split_interval") is not None else split_interval
+                    assist_text_weight_value = float(target_entry.get("assist_text_weight", assist_text_weight)) if target_entry.get("assist_text_weight") is not None else assist_text_weight
+                    volume_value = float(target_entry.get("volume", volume)) if target_entry.get("volume") is not None else volume
+                    
+                    # デバッグログを追加
+                    logger.info(f"履歴から取得したスライダー値: style_weight={style_weight_value}({type(style_weight_value)}), sdp_ratio={sdp_ratio_value}({type(sdp_ratio_value)}), noise={noise_value}({type(noise_value)}), noise_w={noise_w_value}({type(noise_w_value)}), length={length_value}({type(length_value)})")
+                    logger.info(f"現在のスライダー値: style_weight={style_weight}({type(style_weight)}), sdp_ratio={sdp_ratio}({type(sdp_ratio)}), noise={noise}({type(noise)}), noise_w={noise_w}({type(noise_w)}), length={length}({type(length)})")
+                    
+                    logger.info(f"履歴から設定を再利用します: モデル={model_name}, safetensor={safetensor_name}, スタイル={style_name}, テキスト={text_content}")
+                    
+                    # 値を更新
+                    return (
+                        model_name,
+                        safetensor_name,
+                        character_name if character_name else character_dropdown,
+                        style_name,
+                        style_weight_value if style_weight_value is not None else style_weight,
+                        sdp_ratio_value if sdp_ratio_value is not None else sdp_ratio,
+                        noise_value if noise_value is not None else noise,
+                        noise_w_value if noise_w_value is not None else noise_w,
+                        length_value if length_value is not None else length,
+                        line_split_value if line_split_value is not None else line_split,
+                        split_interval_value if split_interval_value is not None else split_interval,
+                        assist_text_weight_value if assist_text_weight_value is not None else assist_text_weight,
+                        volume_value if volume_value is not None else volume,
+                        text_content  # テキストボックスに反映
+                    )
+                except Exception as e:
+                    logger.error(f"履歴からの設定再利用中にエラーが発生しました: {e}")
+                    logger.exception(e)  # スタックトレースを出力
+            
+            # 再利用ボタン以外がクリックされた場合は何もしない
+            return model_dropdown, safetensor_dropdown, character_dropdown, style_dropdown, style_weight, sdp_ratio, noise, noise_w, length, line_split, split_interval, assist_text_weight, volume, text_input
+        
+        # 履歴からの設定再利用イベント
+        voice_history_display.select(
+            fn=reuse_from_history,
+            inputs=[
+                voice_history_display, voice_model_dropdown, voice_safetensor_dropdown, voice_character_dropdown,
+                voice_style_dropdown, voice_style_weight_slider, voice_sdp_ratio_slider,
+                voice_noise_slider, voice_noise_w_slider, voice_length_slider,
+                voice_line_split_checkbox, voice_split_interval_slider,
+                voice_assist_text_weight_slider, voice_volume_slider, voice_text_input
+            ],
+            outputs=[
+                voice_model_dropdown, voice_safetensor_dropdown, voice_character_dropdown,
+                voice_style_dropdown, voice_style_weight_slider, voice_sdp_ratio_slider,
+                voice_noise_slider, voice_noise_w_slider, voice_length_slider,
+                voice_line_split_checkbox, voice_split_interval_slider,
+                voice_assist_text_weight_slider, voice_volume_slider, voice_text_input
+            ]
+        )
+        
         # 年月日ディレクトリの選択が変更されたときの処理
         def on_date_dir_change(date_dir_idx):
             if date_dir_idx is None:
@@ -1441,12 +1777,27 @@ def create_ui() -> gr.Blocks:
             # DataFrameに表示するデータを作成
             df_data = []
             for item in history_list:
+                # safetensor_idからsafetensor名を取得
+                safetensor_name = ""
+                if "model_id" in item and "safetensor_id" in item:
+                    model_id = item.get("model_id")
+                    safetensor_id = item.get("safetensor_id")
+                    safetensors = webui.get_safetensors_for_model(model_id)
+                    for sf in safetensors:
+                        if sf.get("id") == safetensor_id:
+                            # 拡張子を削除
+                            sf_name = sf.get("name", "")
+                            safetensor_name = os.path.splitext(sf_name)[0]
+                            break
+                
                 df_data.append([
                     item.get("text", ""), 
                     item.get("timestamp", ""),
-                    item.get("model", ""),
+                    safetensor_name if safetensor_name else item.get("model", ""),
                     item.get("character", ""), 
-                    item.get("style", "")
+                    item.get("style", ""),
+                    "♻️",  # 再利用ボタン
+                    "🗑️"  # 削除ボタン
                 ])
             
             return df_data
@@ -1456,6 +1807,40 @@ def create_ui() -> gr.Blocks:
             fn=on_date_dir_change,
             inputs=[date_dir_dropdown],
             outputs=[voice_history_display]
+        )
+        
+        # フォルダを開く関数
+        def open_selected_folder(date_dir_idx):
+            if date_dir_idx is None or date_dir_idx < 0 or date_dir_idx >= len(date_dirs):
+                return gr.update(value="ディレクトリが選択されていません。")
+            
+            try:
+                # タプルの最初の要素（実際のディレクトリ名）を取得
+                date_dir = date_dirs[date_dir_idx][0]
+                folder_path = os.path.join(os.getcwd(), "outputs", "VoiceGen", date_dir)
+                folder_path = os.path.normpath(folder_path)
+                
+                # OSに応じてフォルダを開くコマンドを実行
+                if os.name == 'nt':  # Windows
+                    os.startfile(folder_path)
+                elif os.name == 'posix':  # macOS, Linux
+                    if sys.platform == 'darwin':  # macOS
+                        subprocess.run(['open', folder_path])
+                    else:  # Linux
+                        subprocess.run(['xdg-open', folder_path])
+                
+                # 表示用の日付フォーマット
+                display_date = date_dirs[date_dir_idx][1]
+                return gr.update(value=f"フォルダを開きました: {display_date} ({folder_path})")
+            except Exception as e:
+                logger.error(f"フォルダを開く際にエラーが発生しました: {e}")
+                return gr.update(value=f"エラー: {str(e)}")
+        
+        # フォルダを開くボタンのイベント
+        open_folder_btn.click(
+            fn=open_selected_folder,
+            inputs=[date_dir_dropdown],
+            outputs=[refresh_message]
         )
     
     return demo
